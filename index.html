@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#f7f8fa" />
+<meta name="color-scheme" content="light" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Hebrew" />
+<link rel="apple-touch-icon" href="icon.png" />
+<link rel="icon" type="image/png" href="icon.png" />
+<title>Hebrew Translator</title>
+<style>
+  :root{
+    --bg:#f7f8fa;--card:#fff;--text:#202124;--muted:#5f6368;--line:#dadce0;--blue:#1a73e8;--soft:#e8f0fe;--warn:#b3261e;
+  }
+  *{box-sizing:border-box}
+  :root{color-scheme:light}
+  body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--text)}
+  button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  .wrap{max-width:760px;margin:0 auto;padding:16px;padding-top:calc(16px + env(safe-area-inset-top));padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+  .header{display:flex;align-items:center;justify-content:space-between;padding:8px 2px 14px}
+  .title{font-size:22px;font-weight:700}
+  .sub{font-size:13px;color:var(--muted)}
+  .gear{border:0;background:none;font-size:22px;cursor:pointer;padding:8px;min-width:44px;min-height:44px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .toolbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);gap:10px}
+  .lang{font-weight:600;color:var(--blue);font-size:15px}
+  .swap{border:0;background:var(--soft);color:var(--blue);border-radius:999px;padding:10px 14px;font-weight:600;cursor:pointer;min-height:44px}
+  .swap:active{background:#d2e3fc}
+  textarea{width:100%;min-height:150px;border:0;outline:0;resize:vertical;padding:18px;font:inherit;font-size:24px;line-height:1.4;background:white;color:var(--text)}
+  textarea.rtl{direction:rtl;text-align:right}
+  .actions{display:flex;gap:8px;padding:10px 14px 14px;flex-wrap:wrap}
+  button{font:inherit}
+  .btn{border:1px solid var(--line);background:white;border-radius:999px;padding:11px 16px;cursor:pointer;min-height:44px}
+  .btn:active{background:#f1f3f4}
+  .btn.primary{background:var(--blue);color:white;border-color:var(--blue);font-weight:600;min-width:110px}
+  .btn.primary:active{background:#1765cc}
+  .btn:disabled{opacity:.5;cursor:default}
+  .output{margin-top:14px}
+  .section{padding:16px 18px;border-bottom:1px solid var(--line)}
+  .section:last-child{border-bottom:0}
+  .label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:7px;font-weight:700}
+  .hebrew{font-size:30px;line-height:1.6;direction:rtl;text-align:right}
+  .ltr{direction:ltr;text-align:left}
+  .phonetic{font-size:21px;line-height:1.5}
+  .meaning{font-size:17px;line-height:1.55}
+  .status{padding:10px 14px;color:var(--muted);font-size:13px;min-height:20px}
+  .status.err{color:var(--warn)}
+  .hint{margin-top:14px;color:var(--muted);font-size:13px;line-height:1.45;padding:0 4px}
+  .histcard{margin-top:14px}
+  .histhead{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 8px}
+  .histclear{border:0;background:none;color:var(--muted);font-size:13px;cursor:pointer;padding:6px 8px}
+  .histitem{padding:13px 18px;border-bottom:1px solid var(--line);cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .histitem:last-child{border-bottom:0}
+  .histitem .src{font-size:15px;color:var(--text)}
+  .histitem .dst{font-size:15px;color:var(--muted);direction:rtl;text-align:right}
+  .histitem:active{background:var(--soft)}
+  @media (hover:hover){.histitem:hover{background:var(--soft)}}
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;justify-content:center;z-index:10}
+  .sheet.open{display:flex}
+  .panel{background:white;border-radius:22px 22px 0 0;max-width:760px;width:100%;padding:20px 18px;padding-bottom:calc(30px + env(safe-area-inset-bottom))}
+  .panel h3{margin:0 0 4px;font-size:18px}
+  .panel p{margin:6px 0 14px;color:var(--muted);font-size:13.5px;line-height:1.5}
+  .panel label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:12px 0 5px}
+  .panel input,.panel select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font:inherit;font-size:16px;background:white;color:var(--text)}
+  .panelrow{display:flex;gap:8px;margin-top:16px}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--soft);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (max-width:600px){textarea{font-size:22px;min-height:140px}.hebrew{font-size:27px}.phonetic{font-size:19px}.wrap{padding:10px}.title{font-size:20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <div class="title">Hebrew Translator</div>
+      <div class="sub">Natural Israeli Hebrew • Niqqud • Pronunciation</div>
+    </div>
+    <button class="gear" id="gearBtn" title="Settings">⚙️</button>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div id="sourceLang" class="lang">English</div>
+      <button class="swap" id="swapBtn">⇄ Swap</button>
+      <div id="targetLang" class="lang">Hebrew</div>
+    </div>
+
+    <textarea id="input" placeholder="Type or paste here…" autocomplete="off" autocapitalize="sentences"></textarea>
+    <div class="actions">
+      <button class="btn primary" id="translateBtn">Translate</button>
+      <button class="btn" id="clearBtn">Clear</button>
+      <button class="btn" id="micBtn">🎙 Speak</button>
+    </div>
+    <div id="status" class="status">Ready</div>
+  </div>
+
+  <div class="card output" id="outputCard">
+    <div class="section">
+      <div class="label" id="primaryLabel">Natural Hebrew</div>
+      <div id="primary" class="hebrew">—</div>
+    </div>
+    <div class="section">
+      <div class="label" id="niqqudLabel">With Niqqud</div>
+      <div id="niqqud" class="hebrew">—</div>
+    </div>
+    <div class="section">
+      <div class="label">Pronunciation</div>
+      <div id="phonetic" class="phonetic">—</div>
+    </div>
+    <div class="section">
+      <div class="label">Meaning / Notes</div>
+      <div id="meaning" class="meaning">—</div>
+    </div>
+    <div class="actions">
+      <button class="btn" data-copy="primary">Copy translation</button>
+      <button class="btn" data-copy="niqqud">Copy niqqud</button>
+      <button class="btn" id="speakBtn">🔊 Speak Hebrew</button>
+    </div>
+  </div>
+
+  <div class="card histcard" id="histCard" style="display:none">
+    <div class="histhead"><div class="label" style="margin-bottom:0">Recent</div><button class="histclear" id="histClearBtn">Clear</button></div>
+    <div id="histList"></div>
+  </div>
+
+  <div class="hint" id="footerHint">Tap ⚙️ once to add your API key. After that it just works, on any device, and remembers your recent phrases.</div>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="panel">
+    <h3>Settings</h3>
+    <p>The app talks directly to Claude, Anthropic's AI, for translation. It needs an API key once. The key is stored only on this device, never sent anywhere except to Anthropic.</p>
+    <label>Anthropic API key</label>
+    <input type="password" id="keyInput" placeholder="sk-ant-..." autocomplete="off" />
+    <label>Quality</label>
+    <select id="modelSelect">
+      <option value="claude-sonnet-5">Best quality (recommended)</option>
+      <option value="claude-haiku-4-5">Fastest</option>
+    </select>
+    <div class="panelrow">
+      <button class="btn primary" id="saveBtn">Save</button>
+      <button class="btn" id="testBtn">Test key</button>
+      <button class="btn" id="closeBtn">Close</button>
+    </div>
+    <div class="status" id="sheetStatus"></div>
+  </div>
+</div>
+
+<script>
+const input = document.getElementById('input');
+const statusEl = document.getElementById('status');
+let direction = 'en-he';
+let busy = false;
+
+// David's original starter phrases stay as an instant offline cache.
+const cache = {
+  'en-he|how was last night?': {primary:'איך היה אתמול בלילה?', niqqud:'אֵיךְ הָיָה אֶתְמוֹל בַּלַּיְלָה?', phonetic:'Eikh haya etmol ba-layla?', meaning:'How was last night? Natural, everyday Israeli Hebrew.'},
+  'en-he|good morning': {primary:'בוקר טוב', niqqud:'בּוֹקֶר טוֹב', phonetic:'Boker tov', meaning:'Good morning.'},
+  'en-he|thank you': {primary:'תודה', niqqud:'תּוֹדָה', phonetic:'Toda', meaning:'Thank you.'}
+};
+
+const SYSTEM = `You are a meticulous English-Hebrew translator specializing in natural, modern, everyday Israeli Hebrew. You respond ONLY with a JSON object, no markdown fences, no commentary.
+
+For ENGLISH input (direction en-he) return:
+{"primary": natural modern Israeli Hebrew translation WITHOUT niqqud,
+ "niqqud": the exact same Hebrew fully and correctly pointed with niqqud,
+ "phonetic": clear Latin transliteration, word by word, in the style "Eikh haya etmol ba-layla?",
+ "meaning": one to three short sentences: register (casual, polite, literary), when to use it, and one natural alternative phrasing with its nuance when a good one exists}
+
+For HEBREW input (direction he-en) return:
+{"primary": faithful natural English translation,
+ "niqqud": the INPUT Hebrew fully and correctly pointed with niqqud,
+ "phonetic": Latin transliteration of the Hebrew,
+ "meaning": one to three short sentences on nuance, register, idiom, or anything an English speaker would miss}
+
+Niqqud rules, non-negotiable: point every word completely and correctly for modern Israeli pronunciation. Get the dagesh right every time: bet with dagesh (b) vs without (v), pe with dagesh (p) vs without (f), kaf with dagesh (k) vs without (kh). Shva, dagesh forte, final forms, and matres lectionis must all be correct. The transliteration must reflect the pointed text exactly: write "b" only where the dagesh makes it b, "v" where it does not, same for p/f and k/kh, and write "kh" for khaf and chet, "tz" for tsadi. Mark the definite article and prefixes naturally (ha-, ba-, le-, ve-).
+
+Translate the register of the input: casual English gets casual Hebrew, formal gets formal. Never produce biblical or stilted Hebrew for everyday speech.`;
+
+function getKey(){ return localStorage.getItem('anthKey') || ''; }
+function getModel(){
+  const m = localStorage.getItem('anthModel') || 'claude-sonnet-5';
+  return m === 'claude-haiku-4-5-20251001' ? 'claude-haiku-4-5' : m;
+}
+const isTouch = 'ontouchstart' in window;
+
+function relabel(){
+  const enHe = direction === 'en-he';
+  document.getElementById('sourceLang').textContent = enHe ? 'English' : 'Hebrew';
+  document.getElementById('targetLang').textContent = enHe ? 'Hebrew' : 'English';
+  document.getElementById('primaryLabel').textContent = enHe ? 'Natural Hebrew' : 'English Translation';
+  document.getElementById('niqqudLabel').textContent = enHe ? 'With Niqqud' : 'Your Hebrew, with Niqqud';
+  const p = document.getElementById('primary');
+  p.classList.toggle('ltr', !enHe);
+  input.classList.toggle('rtl', !enHe);
+  input.placeholder = enHe ? 'Type or paste here…' : 'הקלד או הדבק כאן…';
+}
+
+function setOutput(d){
+  document.getElementById('primary').textContent = d.primary || '—';
+  document.getElementById('niqqud').textContent = d.niqqud || '—';
+  document.getElementById('phonetic').textContent = d.phonetic || '—';
+  document.getElementById('meaning').textContent = d.meaning || '—';
+}
+
+function autodetect(text){
+  const hasHebrew = /[֐-׿]/.test(text);
+  const want = hasHebrew ? 'he-en' : 'en-he';
+  if (want !== direction){ direction = want; relabel(); }
+}
+
+function parseJSONLoose(t){
+  t = t.trim().replace(/^```(json)?/i,'').replace(/```$/,'').trim();
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if (a === -1 || b === -1) throw new Error('no JSON in reply');
+  return JSON.parse(t.slice(a, b + 1));
+}
+
+// Asking for a fixed JSON shape gives the cleanest output, but if this account or
+// model ever rejects that option we fall back to the plain request rather than
+// showing an error. The system prompt asks for the same shape either way.
+const SHAPE = { type: 'json_schema', schema: {
+  type: 'object',
+  properties: { primary: {type:'string'}, niqqud: {type:'string'}, phonetic: {type:'string'}, meaning: {type:'string'} },
+  required: ['primary','niqqud','phonetic','meaning'],
+  additionalProperties: false
+} };
+
+async function post(key, body){
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  });
+}
+
+async function callClaude(text){
+  const key = getKey();
+  if (!key) { throw Object.assign(new Error('Add your API key first: tap the gear at the top right.'), {friendly:true}); }
+  const base = {
+    model: getModel(),
+    max_tokens: 2000,
+    system: SYSTEM,
+    messages: [{ role: 'user', content: `direction: ${direction}\ntext: ${text}` }]
+  };
+
+  let res = await post(key, { ...base, output_config: { format: SHAPE } });
+  if (res.status === 400) res = await post(key, base);
+
+  if (!res.ok) {
+    let msg = 'Translation service error (' + res.status + ').';
+    if (res.status === 400) msg = 'That request was refused. Try shorter text, or a different phrase.';
+    if (res.status === 401) msg = 'That API key was not accepted. Check it in Settings.';
+    if (res.status === 429) msg = 'Rate limited. Wait a few seconds and try again.';
+    if (res.status === 402 || res.status === 403) msg = 'That key has no credit left, or is not allowed to use this model. Check your Anthropic account.';
+    if (res.status >= 500) msg = 'Anthropic is briefly unavailable. Try again in a moment.';
+    throw Object.assign(new Error(msg), {friendly:true});
+  }
+  const data = await res.json();
+  const out = parseJSONLoose(data.content.map(c => c.text || '').join(''));
+  if (!out.primary) throw new Error('empty translation');
+  return out;
+}
+
+function saveHist(entry){
+  const h = JSON.parse(localStorage.getItem('hist') || '[]');
+  h.unshift(entry);
+  localStorage.setItem('hist', JSON.stringify(h.slice(0, 20)));
+  renderHist();
+}
+
+function renderHist(){
+  const h = JSON.parse(localStorage.getItem('hist') || '[]');
+  const card = document.getElementById('histCard');
+  const list = document.getElementById('histList');
+  if (!h.length){ card.style.display = 'none'; return; }
+  card.style.display = '';
+  list.innerHTML = '';
+  h.forEach(e => {
+    const div = document.createElement('div');
+    div.className = 'histitem';
+    const src = document.createElement('div'); src.className = 'src'; src.textContent = e.text;
+    const dst = document.createElement('div'); dst.className = 'dst'; dst.textContent = e.result.primary;
+    if (e.direction === 'he-en') { dst.style.direction = 'ltr'; dst.style.textAlign = 'left'; src.style.direction='rtl'; src.style.textAlign='right'; }
+    div.appendChild(src); div.appendChild(dst);
+    div.onclick = () => { direction = e.direction; relabel(); input.value = e.text; setOutput(e.result); };
+    list.appendChild(div);
+  });
+}
+
+async function runTranslate(){
+  if (busy) return;
+  const text = input.value.trim();
+  if (!text){ statusEl.textContent = 'Type something first.'; return; }
+  autodetect(text);
+  const cacheKey = direction + '|' + text.toLowerCase();
+  if (cache[cacheKey]){ setOutput(cache[cacheKey]); statusEl.textContent = 'Done'; return; }
+  busy = true;
+  document.getElementById('translateBtn').disabled = true;
+  if (isTouch) input.blur();
+  statusEl.className = 'status';
+  statusEl.innerHTML = '<span class="spin"></span>Translating…';
+  try {
+    const result = await callClaude(text);
+    setOutput(result);
+    statusEl.textContent = 'Done';
+    saveHist({ text, direction, result });
+    if (isTouch) document.getElementById('outputCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e) {
+    statusEl.className = 'status err';
+    statusEl.textContent = e.friendly ? e.message : 'Could not translate. Check your connection and try again.';
+  } finally {
+    busy = false;
+    document.getElementById('translateBtn').disabled = false;
+  }
+}
+
+document.getElementById('translateBtn').onclick = runTranslate;
+document.getElementById('clearBtn').onclick = () => { input.value=''; setOutput({}); statusEl.className='status'; statusEl.textContent='Ready'; input.focus(); };
+document.getElementById('swapBtn').onclick = () => { direction = direction === 'en-he' ? 'he-en' : 'en-he'; relabel(); statusEl.textContent = 'Direction switched'; };
+
+document.querySelectorAll('[data-copy]').forEach(btn => btn.onclick = async () => {
+  const t = document.getElementById(btn.dataset.copy).textContent;
+  if (t === '—') return;
+  await navigator.clipboard.writeText(t);
+  statusEl.textContent = 'Copied';
+});
+
+document.getElementById('speakBtn').onclick = () => {
+  const enHe = direction === 'en-he';
+  const t = enHe ? document.getElementById('primary').textContent : input.value;
+  if (!('speechSynthesis' in window) || !t || t === '—') return;
+  const u = new SpeechSynthesisUtterance(t); u.lang = 'he-IL'; u.rate = 0.9;
+  speechSynthesis.speak(u);
+};
+
+document.getElementById('micBtn').onclick = () => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR){ statusEl.textContent = 'Speech input is not supported in this browser.'; return; }
+  const r = new SR(); r.lang = direction === 'en-he' ? 'en-US' : 'he-IL'; r.interimResults = false;
+  statusEl.textContent = 'Listening…';
+  r.onresult = e => { input.value = e.results[0][0].transcript; statusEl.textContent = 'Heard it'; runTranslate(); };
+  r.onerror = () => statusEl.textContent = 'Speech input failed.';
+  r.start();
+};
+
+input.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') runTranslate(); });
+
+document.getElementById('histClearBtn').onclick = () => {
+  localStorage.removeItem('hist');
+  renderHist();
+};
+
+// Settings sheet
+const sheet = document.getElementById('sheet');
+document.getElementById('gearBtn').onclick = () => {
+  document.getElementById('keyInput').value = getKey();
+  document.getElementById('modelSelect').value = getModel();
+  document.getElementById('sheetStatus').textContent = '';
+  sheet.classList.add('open');
+};
+document.getElementById('closeBtn').onclick = () => sheet.classList.remove('open');
+sheet.onclick = e => { if (e.target === sheet) sheet.classList.remove('open'); };
+document.getElementById('saveBtn').onclick = () => {
+  localStorage.setItem('anthKey', document.getElementById('keyInput').value.trim());
+  localStorage.setItem('anthModel', document.getElementById('modelSelect').value);
+  document.getElementById('sheetStatus').textContent = 'Saved.';
+  setTimeout(() => sheet.classList.remove('open'), 500);
+};
+document.getElementById('testBtn').onclick = async () => {
+  const s = document.getElementById('sheetStatus');
+  localStorage.setItem('anthKey', document.getElementById('keyInput').value.trim());
+  localStorage.setItem('anthModel', document.getElementById('modelSelect').value);
+  s.textContent = 'Testing…';
+  const saved = direction; direction = 'en-he';
+  try { await callClaude('hello'); s.textContent = '✓ Key works.'; }
+  catch(e){ s.textContent = e.message; }
+  finally { direction = saved; }
+};
+
+if (!getKey()){ statusEl.textContent = 'Tap ⚙️ to add your API key and start translating.'; }
+relabel();
+renderHist();
+</script>
+</body>
+</html>
