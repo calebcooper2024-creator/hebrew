@@ -13,7 +13,7 @@
 <title>Hebrew Translator</title>
 <style>
   :root{
-    --bg:#f7f8fa;--card:#fff;--text:#202124;--muted:#5f6368;--line:#dadce0;--blue:#1a73e8;--soft:#e8f0fe;--warn:#b3261e;
+    --bg:#f7f8fa;--card:#fff;--text:#202124;--muted:#5f6368;--line:#dadce0;--blue:#1a73e8;--soft:#e8f0fe;--warn:#b3261e;--ok:#188038;
   }
   *{box-sizing:border-box}
   :root{color-scheme:light}
@@ -29,6 +29,7 @@
   .lang{font-weight:600;color:var(--blue);font-size:15px}
   .swap{border:0;background:var(--soft);color:var(--blue);border-radius:999px;padding:10px 14px;font-weight:600;cursor:pointer;min-height:44px}
   .swap:active{background:#d2e3fc}
+  .swap:disabled{opacity:.5}
   textarea{width:100%;min-height:150px;border:0;outline:0;resize:vertical;padding:18px;font:inherit;font-size:24px;line-height:1.4;background:white;color:var(--text)}
   textarea.rtl{direction:rtl;text-align:right}
   .actions{display:flex;gap:8px;padding:10px 14px 14px;flex-wrap:wrap}
@@ -48,6 +49,7 @@
   .meaning{font-size:17px;line-height:1.55}
   .status{padding:10px 14px;color:var(--muted);font-size:13px;min-height:20px}
   .status.err{color:var(--warn)}
+  .status.ok{color:var(--ok)}
   .hint{margin-top:14px;color:var(--muted);font-size:13px;line-height:1.45;padding:0 4px}
   .histcard{margin-top:14px}
   .histhead{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 8px}
@@ -68,7 +70,7 @@
   .panelrow{display:flex;gap:8px;margin-top:16px}
   .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--soft);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
   @keyframes sp{to{transform:rotate(360deg)}}
-  @media (max-width:600px){textarea{font-size:22px;min-height:140px}.hebrew{font-size:27px}.phonetic{font-size:19px}.wrap{padding:10px}.title{font-size:20px}}
+  @media (max-width:600px){textarea{font-size:22px;min-height:140px}.hebrew{font-size:27px}.phonetic{font-size:19px}.wrap{padding:10px;padding-top:calc(10px + env(safe-area-inset-top));padding-bottom:calc(20px + env(safe-area-inset-bottom))}.title{font-size:20px}}
 </style>
 </head>
 <body>
@@ -137,9 +139,16 @@
     <input type="password" id="keyInput" placeholder="sk-ant-..." autocomplete="off" />
     <label>Quality</label>
     <select id="modelSelect">
-      <option value="claude-sonnet-5">Best quality (recommended)</option>
+      <option value="claude-sonnet-5">Great quality, fast (recommended)</option>
+      <option value="claude-opus-5">Highest quality, slower</option>
       <option value="claude-haiku-4-5">Fastest</option>
     </select>
+    <label>Niqqud double-check</label>
+    <select id="nakdanSelect">
+      <option value="on">On, verify with Dicta Nakdan (recommended)</option>
+      <option value="off">Off</option>
+    </select>
+    <p style="margin-top:8px">The double-check sends just the Hebrew sentence to Nakdan, a free tool from Dicta, an Israeli research nonprofit whose vowel-pointing is the best there is. If it spots a wrong mark, the app corrects itself.</p>
     <div class="panelrow">
       <button class="btn primary" id="saveBtn">Save</button>
       <button class="btn" id="testBtn">Test key</button>
@@ -152,8 +161,17 @@
 <script>
 const input = document.getElementById('input');
 const statusEl = document.getElementById('status');
+const translateBtn = document.getElementById('translateBtn');
+const swapBtn = document.getElementById('swapBtn');
 let direction = 'en-he';
 let busy = false;
+let manualDirection = false;
+let requestSeq = 0; // guards stale async updates against newer requests
+
+// localStorage can throw (Safari "Block all cookies") — never let storage kill the app.
+function lsGet(k){ try { return localStorage.getItem(k); } catch { return null; } }
+function lsSet(k, v){ try { localStorage.setItem(k, v); } catch {} }
+function lsDel(k){ try { localStorage.removeItem(k); } catch {} }
 
 // David's original starter phrases stay as an instant offline cache.
 const cache = {
@@ -162,29 +180,64 @@ const cache = {
   'en-he|thank you': {primary:'תודה', niqqud:'תּוֹדָה', phonetic:'Toda', meaning:'Thank you.'}
 };
 
-const SYSTEM = `You are a meticulous English-Hebrew translator specializing in natural, modern, everyday Israeli Hebrew. You respond ONLY with a JSON object, no markdown fences, no commentary.
+const SYSTEM = `You translate between English and natural, modern, everyday Israeli Hebrew for a serious learner who checks every mark. Each user message is:
 
-For ENGLISH input (direction en-he) return:
-{"primary": natural modern Israeli Hebrew translation WITHOUT niqqud,
- "niqqud": the exact same Hebrew fully and correctly pointed with niqqud,
- "phonetic": clear Latin transliteration, word by word, in the style "Eikh haya etmol ba-layla?",
- "meaning": one to three short sentences: register (casual, polite, literary), when to use it, and one natural alternative phrasing with its nuance when a good one exists}
+direction: en-he|he-en
+text: <input>
 
-For HEBREW input (direction he-en) return:
-{"primary": faithful natural English translation,
- "niqqud": the INPUT Hebrew fully and correctly pointed with niqqud,
- "phonetic": Latin transliteration of the Hebrew,
- "meaning": one to three short sentences on nuance, register, idiom, or anything an English speaker would miss}
+Respond with the JSON object only.
 
-Niqqud rules, non-negotiable: point every word completely and correctly for modern Israeli pronunciation. Get the dagesh right every time: bet with dagesh (b) vs without (v), pe with dagesh (p) vs without (f), kaf with dagesh (k) vs without (kh). Shva, dagesh forte, final forms, and matres lectionis must all be correct. The transliteration must reflect the pointed text exactly: write "b" only where the dagesh makes it b, "v" where it does not, same for p/f and k/kh, and write "kh" for khaf and chet, "tz" for tsadi. Mark the definite article and prefixes naturally (ha-, ba-, le-, ve-).
+FIELDS
+For en-he: "primary" is the Hebrew translation in everyday spelling (ktiv male), without niqqud. "niqqud" is the identical text fully pointed. "phonetic" is a word-by-word transliteration of the pointed text. "meaning" is 1 to 3 short sentences: register, when to use it, and one natural alternative with its nuance when a good one exists.
+For he-en: "primary" is faithful, natural English, adding nothing the Hebrew does not license. "niqqud" is the INPUT Hebrew fully pointed, same spelling and same words (fix obvious typos silently). "phonetic" transliterates that pointed text. "meaning" is 1 to 3 short sentences: register, any idiom or nuance an English speaker would miss, and any assumption the pointing forced, like addressee gender. Never pad.
+Match register: casual English gets casual spoken Hebrew, formal gets formal, never biblical or stilted; prefer the word Israelis actually say over the dictionary's first entry.
 
-Translate the register of the input: casual English gets casual Hebrew, formal gets formal. Never produce biblical or stilted Hebrew for everyday speech.`;
+NIQQUD LAWS
+1. Point the ktiv male spelling exactly as written. Never respell to ktiv haser, never add or drop a letter: הכול is pointed הַכּוֹל (not הַכֹּל), להיפגש is לְהִיפָּגֵשׁ. A mater vav carries its own sign (וֹ or וּ); a mater yod stands unmarked after its chirik or tsere.
+2. Dagesh qal in ב ג ד כ פ ת at word start and after a silent shva, never after a vowel; a shva under a dageshed letter counts as vocal (אִיתְּךָ keeps khaf rafe: itkha). For ב כ פ, a dagesh of either kind sounds b, k, p; no dagesh sounds v, kh, f: כָּתַבְתִּי is katavti (k, v), דָּפַק is dafak (f).
+3. Dagesh chazak in the letter after the definite article הַ, including inside בַּ, לַ, כַּ (prefix plus article), after שֶׁ־ and מִ־, and wherever assimilation demands it (nif'al לְהִיפָּגֵשׁ). Gutturals א ה ח ע ר never take dagesh; instead the article is הָ before א ע ר and before ה or ע carrying a stressed kamatz (הָאוֹטוֹבּוּס, לָעֲבוֹדָה, הָהָר), הַ before other ה ח (הַחֶדֶר), and הֶ before חָ and before unstressed הָ עָ (הֶחָכָם); מִ־ regularly becomes מֵ before all five (מֵהָעִיר), except lexicalized forms like מִחוּץ that keep מִ.
+4. Modern Israeli pronunciation governs: kamatz katan is o (כָּל־ kol), patach gnuva (שָׁבוּעַ shavua), mapik in consonantal final הּ (אוֹתָהּ otah), correct final letter forms.
+Point first; derive the transliteration from your own pointed text, never from memory of the unpointed word.
 
-function getKey(){ return localStorage.getItem('anthKey') || ''; }
+TRANSLITERATION LAWS
+- Mirror the pointed text word by word; every dagesh decision must be audible: b/v, p/f, k/kh.
+- kh for both chet and khaf without dagesh; tz for tsadi; apostrophe for a mid-word alef or ayin onset (pit'om). A final mater he gets no h (haya, ha-ze); a mapik he keeps its h (otah).
+- Hyphenate one-letter prefixes: ha-, ba-, la-, be-, le-, ve-, she-, mi-, u-. Never double a letter for dagesh chazak: ba-layla, not ba-llayla.
+- Shva: write e only where Israelis pronounce it today (be-seder, le-hipagesh); a silent shva gets nothing (etmol, katavti, ha-zman, never ha-zeman). Spoken Hebrew is the test here; it governs the Latin letters, not the pointing.
+- Sentence capitalization; keep the input's punctuation.
+
+GOLD EXAMPLES (match their style and rigor exactly)
+
+direction: en-he / text: How was it last night?
+{"primary": "איך היה אתמול בלילה?", "niqqud": "אֵיךְ הָיָה אֶתְמוֹל בַּלַּיְלָה?", "phonetic": "Eikh haya etmol ba-layla?", "meaning": "Casual, the default way to ask this. אֶמֶשׁ (emesh) also means last night and sounds a little more polished than etmol ba-layla; it fits writing or careful speech."}
+Note: ba- doubles the lamed; eikh ends in kh; etmol's shva stays silent.
+
+direction: he-en / text: פתאום מישהו דפק בדלת.
+{"primary": "Suddenly someone knocked on the door.", "niqqud": "פִּתְאוֹם מִישֶׁהוּ דָּפַק בַּדֶּלֶת.", "phonetic": "Pit'om mishehu dafak ba-delet.", "meaning": "Neutral, everyday spoken Hebrew. דָּפַק (dafak) is the normal word for knocking; in other contexts it is rough slang, but with a door it is completely innocent."}
+Note: one pe, two sounds: p in pit'om, f in dafak; ba-delet doubles the dalet.
+
+direction: en-he / text: I wrote him that everything's fine.
+{"primary": "כתבתי לו שהכול בסדר.", "niqqud": "כָּתַבְתִּי לוֹ שֶׁהַכּוֹל בְּסֵדֶר.", "phonetic": "Katavti lo she-ha-kol be-seder.", "meaning": "Casual and standard. In a text message שֶׁהַכּוֹל טוֹב (she-ha-kol tov) is a touch warmer and more slangy."}
+Note: k and v in one word (katavti); הכול keeps its vav, pointed הַכּוֹל; be- is a pronounced shva.
+
+direction: he-en / text: הסרט הזה חבל על הזמן.
+{"primary": "This movie is incredible.", "niqqud": "הַסֶּרֶט הַזֶּה חֲבָל עַל הַזְּמַן.", "phonetic": "Ha-seret ha-ze khaval al ha-zman.", "meaning": "Very common slang. Literally 'a shame about the time', it almost always means 'amazing'; only tone makes it the sarcastic literal 'waste of time'."}
+Note: kh serves chet (khaval); the article's dagesh runs through all three ha- words; modern speech says ha-zman.
+
+direction: en-he / text: I'd be glad to meet with you next week.
+{"primary": "אשמח להיפגש איתך בשבוע הבא.", "niqqud": "אֶשְׂמַח לְהִיפָּגֵשׁ אִיתְּךָ בַּשָּׁבוּעַ הַבָּא.", "phonetic": "Esmakh le-hipagesh itkha ba-shavua ha-ba.", "meaning": "Polite and natural in a work email or on the phone. This is to a man (itkha); to a woman say אִיתָּךְ (itakh). More casual: נִיפָּגֵשׁ שָׁבוּעַ הַבָּא? (nipagesh shavua ha-ba?), meaning shall we meet next week?"}
+Note: nif'al's assimilated nun gives le-hipagesh its p; the yod of איתך stays; shavua ends in patach gnuva.
+
+Every output will be audited mark by mark. Point deliberately.`;
+
+const REFINE_SYSTEM = `You finalize one entry of a Hebrew translator. You receive the entry and an expert pointing of the same Hebrew text from a specialist vocalizer; the expert pointing is authoritative. Return only JSON {"niqqud": ..., "phonetic": ...}. niqqud: the expert pointing exactly as given, spaces and punctuation preserved. phonetic: a word-by-word transliteration mirroring that expert pointing: a dagesh of either kind sounds b, k, p and its absence v, kh, f; kh for chet and for khaf without dagesh; tz for tsadi; hyphenate one-letter prefixes (ha-, ba-, la-, be-, le-, ve-, she-, mi-, u-); never double a letter for dagesh chazak; write e for shva only where Israelis pronounce it in speech today; apostrophe for a mid-word alef or ayin onset; no h for a final mater he, h for a mapik he; sentence capitalization; keep the punctuation.`;
+
+function getKey(){ return lsGet('anthKey') || ''; }
 function getModel(){
-  const m = localStorage.getItem('anthModel') || 'claude-sonnet-5';
+  const m = lsGet('anthModel') || 'claude-sonnet-5';
   return m === 'claude-haiku-4-5-20251001' ? 'claude-haiku-4-5' : m;
 }
+function nakdanOn(){ return (lsGet('nakdanCheck') || 'on') !== 'off'; }
 const isTouch = 'ontouchstart' in window;
 
 function relabel(){
@@ -206,10 +259,17 @@ function setOutput(d){
   document.getElementById('meaning').textContent = d.meaning || '—';
 }
 
+// Autodetect never overrides a direction the user chose by hand for this input.
 function autodetect(text){
+  if (manualDirection) return;
   const hasHebrew = /[֐-׿]/.test(text);
   const want = hasHebrew ? 'he-en' : 'en-he';
-  if (want !== direction){ direction = want; relabel(); }
+  if (want !== direction){
+    direction = want;
+    relabel();
+    statusEl.className = 'status';
+    statusEl.textContent = hasHebrew ? 'Detected Hebrew, translating to English' : 'Detected English, translating to Hebrew';
+  }
 }
 
 function parseJSONLoose(t){
@@ -219,9 +279,31 @@ function parseJSONLoose(t){
   return JSON.parse(t.slice(a, b + 1));
 }
 
-// Asking for a fixed JSON shape gives the cleanest output, but if this account or
-// model ever rejects that option we fall back to the plain request rather than
-// showing an error. The system prompt asks for the same shape either way.
+function friendly(msg){ return Object.assign(new Error(msg), {friendly:true}); }
+
+async function post(key, body){
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60000);
+  try {
+    return await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body),
+      signal: ctrl.signal
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw friendly('Timed out. Check your connection and try again.');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const SHAPE = { type: 'json_schema', schema: {
   type: 'object',
   properties: { primary: {type:'string'}, niqqud: {type:'string'}, phonetic: {type:'string'}, meaning: {type:'string'} },
@@ -229,56 +311,169 @@ const SHAPE = { type: 'json_schema', schema: {
   additionalProperties: false
 } };
 
-async function post(key, body){
-  return fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify(body)
-  });
-}
-
-async function callClaude(text){
-  const key = getKey();
-  if (!key) { throw Object.assign(new Error('Add your API key first: tap the gear at the top right.'), {friendly:true}); }
-  const base = {
-    model: getModel(),
-    max_tokens: 2000,
-    system: SYSTEM,
-    messages: [{ role: 'user', content: `direction: ${direction}\ntext: ${text}` }]
-  };
-
-  let res = await post(key, { ...base, output_config: { format: SHAPE } });
-  if (res.status === 400) res = await post(key, base);
-
+async function callModel(key, base, shape){
+  // Ask for a fixed JSON shape when the account supports it; remember when it does not.
+  let res;
+  if (shape && lsGet('noSchema') !== '1') {
+    res = await post(key, { ...base, output_config: { format: shape } });
+    if (res.status === 400) {
+      const err = await res.json().catch(() => null);
+      const msg = err && err.error && err.error.message || '';
+      if (/output_config|format|json_schema|structured/i.test(msg)) {
+        lsSet('noSchema', '1');
+        res = await post(key, base);
+      } else {
+        throw friendly(msg ? 'Claude rejected that request: ' + msg : 'That request was refused. Try shorter or simpler text.');
+      }
+    }
+  } else {
+    res = await post(key, base);
+  }
   if (!res.ok) {
     let msg = 'Translation service error (' + res.status + ').';
-    if (res.status === 400) msg = 'That request was refused. Try shorter text, or a different phrase.';
+    if (res.status === 400) msg = 'That request was refused. Try shorter or simpler text.';
     if (res.status === 401) msg = 'That API key was not accepted. Check it in Settings.';
     if (res.status === 429) msg = 'Rate limited. Wait a few seconds and try again.';
     if (res.status === 402 || res.status === 403) msg = 'That key has no credit left, or is not allowed to use this model. Check your Anthropic account.';
     if (res.status >= 500) msg = 'Anthropic is briefly unavailable. Try again in a moment.';
-    throw Object.assign(new Error(msg), {friendly:true});
+    throw friendly(msg);
   }
   const data = await res.json();
-  const out = parseJSONLoose(data.content.map(c => c.text || '').join(''));
-  if (!out.primary) throw new Error('empty translation');
+  if (data.stop_reason === 'refusal') throw friendly('Claude declined to translate that. Try rephrasing.');
+  if (data.stop_reason === 'max_tokens') throw friendly('That text is too long for one translation. Try a shorter passage.');
+  let out;
+  try {
+    out = parseJSONLoose(data.content.map(c => c.text || '').join(''));
+  } catch {
+    throw friendly('The translator returned an unreadable answer. Try again.');
+  }
   return out;
 }
 
+async function callClaude(text, dir, keyOverride){
+  const key = keyOverride || getKey();
+  if (!key) throw friendly('Add your API key first: tap the gear at the top right.');
+  // Newer Claude models think before answering by default, and max_tokens covers
+  // that thinking plus the reply, so this needs generous headroom.
+  const base = {
+    model: getModel(),
+    max_tokens: 8000,
+    system: SYSTEM,
+    messages: [{ role: 'user', content: `direction: ${dir}\ntext: ${text}` }]
+  };
+  const out = await callModel(key, base, SHAPE);
+  if (!out.primary) throw friendly('The translator returned an empty answer. Try again.');
+  return out;
+}
+
+// ---- Niqqud double-check via Dicta's Nakdan (specialist vocalizer) ----------
+const NAKDAN_ENDPOINTS = [
+  'https://nakdan-u1-0.loadbalancer.dicta.org.il/api',
+  'https://nakdan-5-1.loadbalancer.dicta.org.il/api'
+];
+const HEB_MARKS = /[֑-ׇ]/g;
+const stripMarks = s => (s || '').replace(HEB_MARKS, '');
+const normHeb = s => (s || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+
+async function nakdanPoint(plainHebrew){
+  for (const url of NAKDAN_ENDPOINTS) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      // No content-type header on purpose: a "simple" request needs no CORS
+      // preflight, and Nakdan's server does not answer preflights.
+      const res = await fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ task: 'nakdan', data: plainHebrew, genre: 'modern' }),
+        signal: ctrl.signal
+      });
+      clearTimeout(timer);
+      if (!res.ok) continue;
+      const tokens = await res.json();
+      if (!Array.isArray(tokens)) continue;
+      const joined = tokens.map(t => {
+        if (t && Array.isArray(t.options) && t.options.length) {
+          const o = t.options[0];
+          const s = typeof o === 'string' ? o : (o && (o.w || o.word)) || '';
+          if (s) return s.replace(/\|/g, '');
+        }
+        return t && typeof t.word === 'string' ? t.word : '';
+      }).join('');
+      if (joined.trim()) return joined.trim();
+    } catch {}
+  }
+  return null;
+}
+
+// After a translation renders, quietly verify its pointing against Nakdan.
+// On agreement: mark verified. On disagreement: adopt the expert pointing and
+// have the model re-derive the transliteration to match. Any failure in here
+// leaves the original result untouched.
+async function verifyNiqqud(result, dir, sourceText, seq){
+  try {
+    if (!nakdanOn()) return;
+    const plain = stripMarks(dir === 'en-he' ? (result.primary || '') : sourceText).trim();
+    if (!/[א-ת]/.test(plain)) return;
+    const expert = await nakdanPoint(plain);
+    if (!expert || seq !== requestSeq) return;
+    if (stripMarks(normHeb(expert)) !== normHeb(stripMarks(plain))) return; // different text, cannot compare
+    if (normHeb(expert) === normHeb(result.niqqud)) {
+      if (!statusEl.className.includes('err')) { statusEl.className = 'status ok'; statusEl.textContent = 'Done, niqqud verified'; }
+      return;
+    }
+    const key = getKey();
+    if (!key) return;
+    const refined = await callModel(key, {
+      model: getModel(),
+      max_tokens: 4000,
+      system: REFINE_SYSTEM,
+      messages: [{ role: 'user', content: `entry: ${JSON.stringify({ primary: result.primary, niqqud: result.niqqud, phonetic: result.phonetic })}\nexpert pointing: ${expert}` }]
+    }, { type: 'json_schema', schema: {
+      type: 'object',
+      properties: { niqqud: {type:'string'}, phonetic: {type:'string'} },
+      required: ['niqqud','phonetic'],
+      additionalProperties: false
+    } });
+    if (seq !== requestSeq) return;
+    if (!refined.niqqud || stripMarks(normHeb(refined.niqqud)) !== normHeb(stripMarks(plain))) return;
+    result.niqqud = refined.niqqud;
+    if (refined.phonetic) result.phonetic = refined.phonetic;
+    setOutput(result);
+    updateHistTop(sourceText, dir, result);
+    if (!statusEl.className.includes('err')) { statusEl.className = 'status ok'; statusEl.textContent = 'Done, niqqud corrected by Nakdan'; }
+  } catch {}
+}
+
+// ---- History ---------------------------------------------------------------
+function loadHist(){
+  try {
+    const h = JSON.parse(lsGet('hist') || '[]');
+    return Array.isArray(h) ? h.filter(e => e && e.result && typeof e.result.primary === 'string') : [];
+  } catch { return []; }
+}
+
 function saveHist(entry){
-  const h = JSON.parse(localStorage.getItem('hist') || '[]');
-  h.unshift(entry);
-  localStorage.setItem('hist', JSON.stringify(h.slice(0, 20)));
-  renderHist();
+  try {
+    const h = loadHist();
+    h.unshift(entry);
+    lsSet('hist', JSON.stringify(h.slice(0, 20)));
+    renderHist();
+  } catch {}
+}
+
+function updateHistTop(text, dir, result){
+  try {
+    const h = loadHist();
+    if (h.length && h[0].text === text && h[0].direction === dir) {
+      h[0].result = result;
+      lsSet('hist', JSON.stringify(h));
+      renderHist();
+    }
+  } catch {}
 }
 
 function renderHist(){
-  const h = JSON.parse(localStorage.getItem('hist') || '[]');
+  const h = loadHist();
   const card = document.getElementById('histCard');
   const list = document.getElementById('histList');
   if (!h.length){ card.style.display = 'none'; return; }
@@ -291,99 +486,146 @@ function renderHist(){
     const dst = document.createElement('div'); dst.className = 'dst'; dst.textContent = e.result.primary;
     if (e.direction === 'he-en') { dst.style.direction = 'ltr'; dst.style.textAlign = 'left'; src.style.direction='rtl'; src.style.textAlign='right'; }
     div.appendChild(src); div.appendChild(dst);
-    div.onclick = () => { direction = e.direction; relabel(); input.value = e.text; setOutput(e.result); };
+    div.onclick = () => { if (busy) return; direction = e.direction; manualDirection = true; relabel(); input.value = e.text; setOutput(e.result); };
     list.appendChild(div);
   });
+}
+
+// ---- Main flow -------------------------------------------------------------
+function setBusy(b){
+  busy = b;
+  translateBtn.disabled = b;
+  swapBtn.disabled = b;
 }
 
 async function runTranslate(){
   if (busy) return;
   const text = input.value.trim();
-  if (!text){ statusEl.textContent = 'Type something first.'; return; }
+  if (!text){ statusEl.className = 'status'; statusEl.textContent = 'Type something first.'; return; }
   autodetect(text);
-  const cacheKey = direction + '|' + text.toLowerCase();
-  if (cache[cacheKey]){ setOutput(cache[cacheKey]); statusEl.textContent = 'Done'; return; }
-  busy = true;
-  document.getElementById('translateBtn').disabled = true;
+  const dir = direction;
+  const cacheKey = dir + '|' + text.toLowerCase();
+  if (cache[cacheKey]){ setOutput(cache[cacheKey]); statusEl.className = 'status'; statusEl.textContent = 'Done'; return; }
+  const seq = ++requestSeq;
+  setBusy(true);
   if (isTouch) input.blur();
   statusEl.className = 'status';
   statusEl.innerHTML = '<span class="spin"></span>Translating…';
+  let result = null;
   try {
-    const result = await callClaude(text);
+    result = await callClaude(text, dir);
     setOutput(result);
+    statusEl.className = 'status';
     statusEl.textContent = 'Done';
-    saveHist({ text, direction, result });
-    if (isTouch) document.getElementById('outputCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e) {
     statusEl.className = 'status err';
     statusEl.textContent = e.friendly ? e.message : 'Could not translate. Check your connection and try again.';
   } finally {
-    busy = false;
-    document.getElementById('translateBtn').disabled = false;
+    setBusy(false);
+  }
+  if (result) {
+    saveHist({ text, direction: dir, result });
+    if (isTouch) document.getElementById('outputCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    verifyNiqqud(result, dir, text, seq);
   }
 }
 
-document.getElementById('translateBtn').onclick = runTranslate;
-document.getElementById('clearBtn').onclick = () => { input.value=''; setOutput({}); statusEl.className='status'; statusEl.textContent='Ready'; input.focus(); };
-document.getElementById('swapBtn').onclick = () => { direction = direction === 'en-he' ? 'he-en' : 'en-he'; relabel(); statusEl.textContent = 'Direction switched'; };
+translateBtn.onclick = runTranslate;
+document.getElementById('clearBtn').onclick = () => { input.value=''; setOutput({}); statusEl.className='status'; statusEl.textContent='Ready'; manualDirection = false; input.focus(); };
+swapBtn.onclick = () => {
+  if (busy) return;
+  direction = direction === 'en-he' ? 'he-en' : 'en-he';
+  manualDirection = true;
+  relabel();
+  statusEl.className = 'status';
+  statusEl.textContent = 'Direction switched';
+};
+input.addEventListener('input', () => { manualDirection = false; });
 
 document.querySelectorAll('[data-copy]').forEach(btn => btn.onclick = async () => {
   const t = document.getElementById(btn.dataset.copy).textContent;
   if (t === '—') return;
-  await navigator.clipboard.writeText(t);
-  statusEl.textContent = 'Copied';
+  try {
+    if (!navigator.clipboard) throw new Error('no clipboard');
+    await navigator.clipboard.writeText(t);
+    statusEl.className = 'status'; statusEl.textContent = 'Copied';
+  } catch {
+    statusEl.className = 'status'; statusEl.textContent = 'Copy failed. Long-press the text to copy it.';
+  }
 });
 
 document.getElementById('speakBtn').onclick = () => {
   const enHe = direction === 'en-he';
   const t = enHe ? document.getElementById('primary').textContent : input.value;
   if (!('speechSynthesis' in window) || !t || t === '—') return;
+  speechSynthesis.cancel(); // clears queued repeats and unwedges iOS after interruptions
   const u = new SpeechSynthesisUtterance(t); u.lang = 'he-IL'; u.rate = 0.9;
   speechSynthesis.speak(u);
 };
 
 document.getElementById('micBtn').onclick = () => {
+  if (busy) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR){ statusEl.textContent = 'Speech input is not supported in this browser.'; return; }
+  if (!SR){ statusEl.className = 'status'; statusEl.textContent = 'Speech input is not supported in this browser.'; return; }
   const r = new SR(); r.lang = direction === 'en-he' ? 'en-US' : 'he-IL'; r.interimResults = false;
-  statusEl.textContent = 'Listening…';
-  r.onresult = e => { input.value = e.results[0][0].transcript; statusEl.textContent = 'Heard it'; runTranslate(); };
-  r.onerror = () => statusEl.textContent = 'Speech input failed.';
+  statusEl.className = 'status'; statusEl.textContent = 'Listening…';
+  let gotResult = false;
+  r.onresult = e => { gotResult = true; input.value = e.results[0][0].transcript; statusEl.textContent = 'Heard it'; runTranslate(); };
+  r.onerror = () => { statusEl.textContent = 'Speech input failed.'; };
+  r.onend = () => { if (!gotResult && statusEl.textContent === 'Listening…') statusEl.textContent = 'Did not catch that. Try again.'; };
   r.start();
 };
 
 input.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') runTranslate(); });
 
 document.getElementById('histClearBtn').onclick = () => {
-  localStorage.removeItem('hist');
+  lsDel('hist');
   renderHist();
 };
 
-// Settings sheet
+// ---- Settings sheet --------------------------------------------------------
 const sheet = document.getElementById('sheet');
 document.getElementById('gearBtn').onclick = () => {
   document.getElementById('keyInput').value = getKey();
   document.getElementById('modelSelect').value = getModel();
+  document.getElementById('nakdanSelect').value = nakdanOn() ? 'on' : 'off';
   document.getElementById('sheetStatus').textContent = '';
   sheet.classList.add('open');
 };
 document.getElementById('closeBtn').onclick = () => sheet.classList.remove('open');
 sheet.onclick = e => { if (e.target === sheet) sheet.classList.remove('open'); };
+
+function persistSettings(){
+  lsSet('anthKey', document.getElementById('keyInput').value.trim());
+  lsSet('anthModel', document.getElementById('modelSelect').value);
+  lsSet('nakdanCheck', document.getElementById('nakdanSelect').value);
+  lsDel('noSchema'); // a new key or model may support the JSON shape again
+}
+
 document.getElementById('saveBtn').onclick = () => {
-  localStorage.setItem('anthKey', document.getElementById('keyInput').value.trim());
-  localStorage.setItem('anthModel', document.getElementById('modelSelect').value);
+  persistSettings();
+  document.getElementById('sheetStatus').className = 'status';
   document.getElementById('sheetStatus').textContent = 'Saved.';
   setTimeout(() => sheet.classList.remove('open'), 500);
 };
+
+// Test tries the key as typed and only saves it if it works, so a typo can
+// never destroy a working key.
 document.getElementById('testBtn').onclick = async () => {
   const s = document.getElementById('sheetStatus');
-  localStorage.setItem('anthKey', document.getElementById('keyInput').value.trim());
-  localStorage.setItem('anthModel', document.getElementById('modelSelect').value);
+  const candidate = document.getElementById('keyInput').value.trim();
+  if (!candidate) { s.className = 'status err'; s.textContent = 'Paste a key first.'; return; }
+  s.className = 'status';
   s.textContent = 'Testing…';
-  const saved = direction; direction = 'en-he';
-  try { await callClaude('hello'); s.textContent = '✓ Key works.'; }
-  catch(e){ s.textContent = e.message; }
-  finally { direction = saved; }
+  try {
+    await callClaude('hello', 'en-he', candidate);
+    persistSettings();
+    s.className = 'status ok';
+    s.textContent = 'Key works. Saved.';
+  } catch(e) {
+    s.className = 'status err';
+    s.textContent = e.friendly ? e.message : 'Test failed. Try again.';
+  }
 };
 
 if (!getKey()){ statusEl.textContent = 'Tap ⚙️ to add your API key and start translating.'; }
