@@ -742,11 +742,15 @@ function wizShow(n){
   [...dots.children].forEach((d, i) => d.classList.toggle('on', i === n - 1));
   document.getElementById('wizNav').style.display = (n >= 1 && n <= 4) ? 'flex' : 'none';
   document.getElementById('wizNext').style.display = (n >= 1 && n <= 3) ? '' : 'none';
+  // Remember the step: the console link can navigate this tab away, and the
+  // wizard must resume here (not restart) when the user comes back.
+  if (n >= 1 && n <= 4 && !getKey()) lsSet('wizStep', String(n));
 }
 function wizOpen(n){ wizard.classList.add('open'); wizShow(n); }
 function wizClose(){
   wizard.classList.remove('open');
   lsSet('wizSeen', '1');
+  lsDel('wizStep');
   if (!getKey()){ statusEl.className = 'status'; statusEl.textContent = 'Tap ⚙️ any time to finish setting up.'; }
 }
 document.getElementById('wizStart').onclick = () => wizShow(1);
@@ -781,7 +785,9 @@ document.getElementById('guideBtn').onclick = () => {
 
 if (!getKey()){
   statusEl.textContent = 'Tap ⚙️ to add your API key and start translating.';
-  if (!lsGet('wizSeen')) wizOpen(0);
+  const resume = parseInt(lsGet('wizStep') || '', 10);
+  if (resume >= 1) wizOpen(Math.min(resume, 4));
+  else if (!lsGet('wizSeen')) wizOpen(0);
 }
 relabel();
 renderHist();
