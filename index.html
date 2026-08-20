@@ -431,7 +431,39 @@ const NAKDAN_ENDPOINTS = [
 ];
 const HEB_MARKS = /[֑-ׇ]/g;
 const stripMarks = s => (s || '').replace(HEB_MARKS, '');
-const normHeb = s => (s || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+const normHeb = s => (s || '').normalize('NFC').replace(/ֽ/g, '').replace(/\s+/g, ' ').trim();
+
+// Nakdan vocalizes into classical spelling (drops maters: בוקר -> בֹּקֶר).
+// Re-insert them so the expert pointing carries the everyday spelling the app
+// promises: cholam -> vav-cholam, kubutz -> shuruk, chirik/tsere -> add yod.
+const isHebMark = c => /[֑-ׇ]/.test(c);
+function expertToMale(expert, plainLetters){
+  // group into letter+marks clusters (NFC can order dagesh after the vowel)
+  const clusters = [];
+  for (const ch of expert) {
+    if (isHebMark(ch) && clusters.length) clusters[clusters.length - 1] += ch;
+    else clusters.push(ch);
+  }
+  const out = [];
+  let i = 0;
+  for (let j = 0; j < plainLetters.length; j++) {
+    const target = plainLetters[j];
+    if (i < clusters.length && clusters[i][0] === target) {
+      out.push(clusters[i++]);
+    } else if (target === 'ו' && out.length && out[out.length - 1].includes('ֹ')) {
+      out[out.length - 1] = out[out.length - 1].replace('ֹ', '');
+      out.push('וֹ');
+    } else if (target === 'ו' && out.length && out[out.length - 1].includes('ֻ')) {
+      out[out.length - 1] = out[out.length - 1].replace('ֻ', '');
+      out.push('וּ');
+    } else if (target === 'י' && out.length && /[ִֵ]/.test(out[out.length - 1])) {
+      out.push('י');
+    } else {
+      return null;
+    }
+  }
+  return i === clusters.length ? out.join('').normalize('NFC') : null;
+}
 
 async function nakdanPoint(plainHebrew){
   for (const url of NAKDAN_ENDPOINTS) {
@@ -472,10 +504,23 @@ async function verifyNiqqud(result, dir, sourceText, seq){
     if (!nakdanOn()) return;
     const plain = stripMarks(dir === 'en-he' ? (result.primary || '') : sourceText).trim();
     if (!/[א-ת]/.test(plain)) return;
-    const expert = await nakdanPoint(plain);
+    let expert = await nakdanPoint(plain);
     if (!expert || seq !== requestSeq) return;
-    if (stripMarks(normHeb(expert)) !== normHeb(stripMarks(plain))) return; // different text, cannot compare
-    if (normHeb(expert) === normHeb(result.niqqud)) {
+    expert = normHeb(expert);
+    const plainN = normHeb(plain);
+    if (stripMarks(expert) !== plainN) {
+      // Nakdan re-spelled (classical vs everyday) — rebuild word by word.
+      const ew = expert.split(' '), pw = plainN.split(' ');
+      if (ew.length !== pw.length) return;
+      for (let i = 0; i < ew.length; i++) {
+        if (stripMarks(ew[i]) === pw[i]) continue;
+        const rebuilt = expertToMale(ew[i], pw[i]);
+        if (!rebuilt) return; // cannot align this word, skip the check
+        ew[i] = rebuilt;
+      }
+      expert = ew.join(' ');
+    }
+    if (expert === normHeb(result.niqqud)) {
       if (!statusEl.className.includes('err')) { statusEl.className = 'status ok'; statusEl.textContent = 'Done, niqqud verified'; }
       return;
     }
