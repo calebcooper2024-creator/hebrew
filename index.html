@@ -68,6 +68,15 @@
   .panel label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:12px 0 5px}
   .panel input,.panel select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font:inherit;font-size:16px;background:white;color:var(--text)}
   .panelrow{display:flex;gap:8px;margin-top:16px}
+  .wizstep{display:none}
+  .wizstep.on{display:block}
+  .wizdots{display:none;gap:7px;justify-content:center;margin-bottom:10px}
+  .wizdots span{width:9px;height:9px;border-radius:50%;background:var(--line)}
+  .wizdots span.on{background:var(--blue)}
+  a.btn{display:inline-block;text-decoration:none;color:var(--text);text-align:center;line-height:1.5}
+  a.btn.primary{color:#fff}
+  .wiznav{justify-content:space-between;display:none}
+  .guidelink{border:0;background:none;color:var(--blue);font-size:14px;cursor:pointer;padding:8px 0;text-align:left}
   .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--soft);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
   @keyframes sp{to{transform:rotate(360deg)}}
   @media (max-width:600px){textarea{font-size:22px;min-height:140px}.hebrew{font-size:27px}.phonetic{font-size:19px}.wrap{padding:10px;padding-top:calc(10px + env(safe-area-inset-top));padding-bottom:calc(20px + env(safe-area-inset-bottom))}.title{font-size:20px}}
@@ -131,12 +140,61 @@
   <div class="hint" id="footerHint">Tap ⚙️ once to add your API key. After that it just works, on any device, and remembers your recent phrases.</div>
 </div>
 
+<div class="sheet" id="wizard">
+  <div class="panel">
+    <div class="wizdots" id="wizDots"><span></span><span></span><span></span><span></span></div>
+
+    <div class="wizstep" data-step="0">
+      <h3>Set up in about three minutes</h3>
+      <p>The translator uses Claude, an AI made by a company called Anthropic. It needs its own key, like a password that only you have. This guide walks you through getting one, step by step. You do this once and never again.</p>
+      <div class="panelrow"><button class="btn primary" id="wizStart">Let's go</button><button class="btn" data-wizclose>Later</button></div>
+    </div>
+
+    <div class="wizstep" data-step="1">
+      <h3>Step 1 of 4: Create your account</h3>
+      <p>Tap the button below. It opens Anthropic's website in a new tab. Sign up there; the easiest way is to tap <b>Continue with Google</b> and use your Gmail. When you are signed in, come back to this tab.</p>
+      <a class="btn primary" href="https://console.anthropic.com" target="_blank" rel="noopener">Open console.anthropic.com</a>
+    </div>
+
+    <div class="wizstep" data-step="2">
+      <h3>Step 2 of 4: Add a card</h3>
+      <p>On the Anthropic site, open <b>Settings</b>, then <b>Billing</b>, and add a payment card. Translating costs pennies; even heavy daily use comes to a few dollars a month.</p>
+      <p>While you are there, it is worth setting a monthly limit of $5 under <b>Limits</b>. Then it can never surprise you.</p>
+    </div>
+
+    <div class="wizstep" data-step="3">
+      <h3>Step 3 of 4: Create your key</h3>
+      <p>On the Anthropic site, open <b>API Keys</b> and tap <b>Create Key</b>. Name it anything you like, "translator" works fine. Tap Create, then tap <b>Copy</b>. That copies your new key.</p>
+    </div>
+
+    <div class="wizstep" data-step="4">
+      <h3>Step 4 of 4: Paste it here</h3>
+      <p>Paste the key you just copied. It stays on this phone and is sent only to Anthropic.</p>
+      <input type="password" id="wizKey" placeholder="sk-ant-..." autocomplete="off" />
+      <div class="panelrow"><button class="btn primary" id="wizTest">Test and finish</button></div>
+      <div class="status" id="wizStatus"></div>
+    </div>
+
+    <div class="wizstep" data-step="5">
+      <h3>You're all set</h3>
+      <p>Your key works and is saved on this phone. Type English and you get natural Israeli Hebrew with the vowel marks double-checked by a specialist. Tap the Share button in Safari and choose <b>Add to Home Screen</b> to keep it like a real app.</p>
+      <div class="panelrow"><button class="btn primary" data-wizclose>Start translating</button></div>
+    </div>
+
+    <div class="panelrow wiznav" id="wizNav">
+      <button class="btn" id="wizBack">Back</button>
+      <button class="btn primary" id="wizNext">Next</button>
+    </div>
+  </div>
+</div>
+
 <div class="sheet" id="sheet">
   <div class="panel">
     <h3>Settings</h3>
     <p>The app talks directly to Claude, Anthropic's AI, for translation. It needs an API key once. The key is stored only on this device, never sent anywhere except to Anthropic.</p>
     <label>Anthropic API key</label>
     <input type="password" id="keyInput" placeholder="sk-ant-..." autocomplete="off" />
+    <button class="guidelink" id="guideBtn">Need a key? Open the step-by-step guide</button>
     <label>Quality</label>
     <select id="modelSelect">
       <option value="claude-sonnet-5">Great quality, fast (recommended)</option>
@@ -628,7 +686,58 @@ document.getElementById('testBtn').onclick = async () => {
   }
 };
 
-if (!getKey()){ statusEl.textContent = 'Tap ⚙️ to add your API key and start translating.'; }
+// ---- First-run setup wizard ------------------------------------------------
+const wizard = document.getElementById('wizard');
+let wizStep = 0;
+function wizShow(n){
+  wizStep = n;
+  document.querySelectorAll('.wizstep').forEach(s => s.classList.toggle('on', +s.dataset.step === n));
+  const dots = document.getElementById('wizDots');
+  dots.style.display = (n >= 1 && n <= 4) ? 'flex' : 'none';
+  [...dots.children].forEach((d, i) => d.classList.toggle('on', i === n - 1));
+  document.getElementById('wizNav').style.display = (n >= 1 && n <= 4) ? 'flex' : 'none';
+  document.getElementById('wizNext').style.display = (n >= 1 && n <= 3) ? '' : 'none';
+}
+function wizOpen(n){ wizard.classList.add('open'); wizShow(n); }
+function wizClose(){
+  wizard.classList.remove('open');
+  lsSet('wizSeen', '1');
+  if (!getKey()){ statusEl.className = 'status'; statusEl.textContent = 'Tap ⚙️ any time to finish setting up.'; }
+}
+document.getElementById('wizStart').onclick = () => wizShow(1);
+document.getElementById('wizBack').onclick = () => wizShow(Math.max(0, wizStep - 1));
+document.getElementById('wizNext').onclick = () => wizShow(Math.min(4, wizStep + 1));
+document.querySelectorAll('[data-wizclose]').forEach(b => b.onclick = wizClose);
+wizard.onclick = e => { if (e.target === wizard) wizClose(); };
+document.getElementById('wizTest').onclick = async () => {
+  const s = document.getElementById('wizStatus');
+  const candidate = document.getElementById('wizKey').value.trim();
+  if (!candidate){ s.className = 'status err'; s.textContent = 'Paste the key first. It starts with sk-ant.'; return; }
+  s.className = 'status';
+  s.innerHTML = '<span class="spin"></span>Checking your key…';
+  try {
+    await callClaude('hello', 'en-he', candidate);
+    lsSet('anthKey', candidate);
+    lsDel('noSchema');
+    statusEl.className = 'status';
+    statusEl.textContent = 'Ready';
+    wizShow(5);
+  } catch(e) {
+    s.className = 'status err';
+    let m = e.friendly ? e.message : 'That did not work. Check the key and try again.';
+    if (/not accepted/.test(m)) m = 'That key was not accepted. Paste it again carefully, or go back a step and create a fresh one.';
+    s.textContent = m;
+  }
+};
+document.getElementById('guideBtn').onclick = () => {
+  sheet.classList.remove('open');
+  wizOpen(getKey() ? 1 : 0);
+};
+
+if (!getKey()){
+  statusEl.textContent = 'Tap ⚙️ to add your API key and start translating.';
+  if (!lsGet('wizSeen')) wizOpen(0);
+}
 relabel();
 renderHist();
 </script>
