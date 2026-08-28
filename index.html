@@ -154,7 +154,12 @@
       <h3>Step 1 of 4: Create your account</h3>
       <p>Tap the button below to open Anthropic's website. Sign up there; the easiest way is to tap <b>Continue with Google</b> and use your Gmail. Then come back here.</p>
       <a class="btn primary" id="consoleLink" href="https://console.anthropic.com" target="_blank" rel="noopener">Open console.anthropic.com</a>
-      <p style="margin-top:12px">If the site opens over this page, no problem: when you are done there, use your browser's <b>Back</b> button and this guide picks up right where you left off. You can also <button class="guidelink" id="copyConsoleUrl" style="padding:0;font-size:inherit">copy the address</button> and open it anywhere.</p>
+      <div id="consoleFallback" style="display:none;margin-top:12px">
+        <p style="margin:0 0 6px">This browser would not open the site in a new tab. Open this address in any other browser window, then come back here:</p>
+        <div style="font-size:17px;font-weight:600;padding:10px;border:1.5px dashed var(--line);border-radius:10px;text-align:center;user-select:all">console.anthropic.com</div>
+        <button class="guidelink" id="copyConsoleUrl">Copy the address</button>
+      </div>
+      <p style="margin-top:12px" id="consoleHint">If the site opens over this page instead of in a new tab, use your browser's <b>Back</b> button when you are done; this guide picks up where you left off.</p>
     </div>
 
     <div class="wizstep" data-step="2">
@@ -783,14 +788,27 @@ document.getElementById('guideBtn').onclick = () => {
   sheet.classList.remove('open');
   wizOpen(getKey() ? 1 : 0);
 };
-// Some embedded browsers silently drop target=_blank clicks. Guarantee the
-// button always does something: new tab when allowed, else navigate here
-// (the wizard's saved step brings the user back to this spot via Back).
-document.getElementById('consoleLink').onclick = e => {
-  e.preventDefault();
-  const w = window.open('https://console.anthropic.com', '_blank');
-  if (!w) location.href = 'https://console.anthropic.com';
-};
+// Some embedded browsers silently drop target=_blank clicks. Let the anchor
+// try its native new-tab behavior (most compatible, especially on iPhone);
+// if nothing observable happens shortly after the tap — no blur, no tab
+// switch, no navigation — assume it was swallowed and show the address to
+// open elsewhere. The app itself never leaves this page.
+document.getElementById('consoleLink').addEventListener('click', () => {
+  let happened = false;
+  const mark = () => { happened = true; };
+  addEventListener('pagehide', mark, { once: true });
+  addEventListener('blur', mark, { once: true });
+  document.addEventListener('visibilitychange', mark, { once: true });
+  setTimeout(() => {
+    removeEventListener('pagehide', mark);
+    removeEventListener('blur', mark);
+    document.removeEventListener('visibilitychange', mark);
+    if (!happened && !document.hidden) {
+      document.getElementById('consoleFallback').style.display = 'block';
+      document.getElementById('consoleHint').style.display = 'none';
+    }
+  }, 1200);
+});
 document.getElementById('copyConsoleUrl').onclick = async e => {
   try {
     if (!navigator.clipboard) throw new Error('no clipboard');
