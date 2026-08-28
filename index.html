@@ -105,10 +105,11 @@
       <button class="btn primary" id="translateBtn">Translate</button>
       <button class="btn" id="clearBtn">Clear</button>
       <button class="btn" id="micBtn">🎙 Speak</button>
-      <select class="btn quality" id="qualitySelect" title="Translation quality">
-        <option value="claude-sonnet-5">Great quality</option>
-        <option value="claude-opus-5">Highest quality</option>
-        <option value="claude-haiku-4-5">Fastest</option>
+      <select class="btn quality" id="qualitySelect" title="Claude model">
+        <option value="claude-fable-5">Fable 5 · smartest</option>
+        <option value="claude-opus-5">Opus 5 · smart</option>
+        <option value="claude-sonnet-5">Sonnet 5 · recommended</option>
+        <option value="claude-haiku-4-5">Haiku 4.5 · fastest</option>
       </select>
     </div>
     <div id="status" class="status">Ready</div>
@@ -207,12 +208,14 @@
     <label>Anthropic API key</label>
     <input type="password" id="keyInput" placeholder="sk-ant-..." autocomplete="off" />
     <button class="guidelink" id="guideBtn">Need a key? Open the step-by-step guide</button>
-    <label>Quality</label>
+    <label>Claude model</label>
     <select id="modelSelect">
-      <option value="claude-sonnet-5">Great quality, fast (recommended)</option>
-      <option value="claude-opus-5">Highest quality, slower</option>
-      <option value="claude-haiku-4-5">Fastest</option>
+      <option value="claude-fable-5">Fable 5, Anthropic's smartest, slower and pricier</option>
+      <option value="claude-opus-5">Opus 5, very smart</option>
+      <option value="claude-sonnet-5">Sonnet 5, fast and smart (recommended)</option>
+      <option value="claude-haiku-4-5">Haiku 4.5, fastest and simplest</option>
     </select>
+    <p style="margin-top:6px">All four work the same way; they differ in depth and speed. Sonnet is the everyday choice. Fable costs about five times Sonnet per translation, still pennies at normal use.</p>
     <label>Niqqud double-check</label>
     <select id="nakdanSelect">
       <option value="on">On, verify with Dicta Nakdan (recommended)</option>
