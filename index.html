@@ -788,17 +788,29 @@ document.getElementById('guideBtn').onclick = () => {
   sheet.classList.remove('open');
   wizOpen(getKey() ? 1 : 0);
 };
-// This page must NEVER be navigated away by the console button: embedded
-// browsers variously coerce target=_blank into taking over the tab, or drop
-// it silently. So the anchor's default is always suppressed; we open a new
-// tab ourselves, and when the browser refuses, we show the address instead.
+// This page must NEVER be navigated away by the console button. Embedded
+// browsers have shown three failure modes: coercing target=_blank into
+// taking over the tab, dropping the click silently, and returning a window
+// handle for a tab that never appears. So: suppress the anchor default,
+// open the tab ourselves, and unless we can SEE that a tab or window
+// actually took focus within a moment, show the address to open elsewhere.
 document.getElementById('consoleLink').addEventListener('click', e => {
   e.preventDefault();
-  const w = window.open('https://console.anthropic.com', '_blank');
-  if (!w) {
+  const showBox = () => {
     document.getElementById('consoleFallback').style.display = 'block';
     document.getElementById('consoleHint').style.display = 'none';
-  }
+  };
+  const w = window.open('https://console.anthropic.com', '_blank');
+  if (!w) { showBox(); return; }
+  let opened = false;
+  const mark = () => { opened = true; };
+  addEventListener('blur', mark, { once: true });
+  document.addEventListener('visibilitychange', mark, { once: true });
+  setTimeout(() => {
+    removeEventListener('blur', mark);
+    document.removeEventListener('visibilitychange', mark);
+    if (!opened && !document.hidden) showBox();
+  }, 1200);
 });
 document.getElementById('copyConsoleUrl').onclick = async e => {
   try {
