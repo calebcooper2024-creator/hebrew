@@ -159,7 +159,7 @@
         <div style="font-size:17px;font-weight:600;padding:10px;border:1.5px dashed var(--line);border-radius:10px;text-align:center;user-select:all">console.anthropic.com</div>
         <button class="guidelink" id="copyConsoleUrl">Copy the address</button>
       </div>
-      <p style="margin-top:12px" id="consoleHint">If the site opens over this page instead of in a new tab, use your browser's <b>Back</b> button when you are done; this guide picks up where you left off.</p>
+      <p style="margin-top:12px" id="consoleHint">It opens in a new tab; this guide stays right here, waiting for you.</p>
     </div>
 
     <div class="wizstep" data-step="2">
@@ -788,26 +788,17 @@ document.getElementById('guideBtn').onclick = () => {
   sheet.classList.remove('open');
   wizOpen(getKey() ? 1 : 0);
 };
-// Some embedded browsers silently drop target=_blank clicks. Let the anchor
-// try its native new-tab behavior (most compatible, especially on iPhone);
-// if nothing observable happens shortly after the tap — no blur, no tab
-// switch, no navigation — assume it was swallowed and show the address to
-// open elsewhere. The app itself never leaves this page.
-document.getElementById('consoleLink').addEventListener('click', () => {
-  let happened = false;
-  const mark = () => { happened = true; };
-  addEventListener('pagehide', mark, { once: true });
-  addEventListener('blur', mark, { once: true });
-  document.addEventListener('visibilitychange', mark, { once: true });
-  setTimeout(() => {
-    removeEventListener('pagehide', mark);
-    removeEventListener('blur', mark);
-    document.removeEventListener('visibilitychange', mark);
-    if (!happened && !document.hidden) {
-      document.getElementById('consoleFallback').style.display = 'block';
-      document.getElementById('consoleHint').style.display = 'none';
-    }
-  }, 1200);
+// This page must NEVER be navigated away by the console button: embedded
+// browsers variously coerce target=_blank into taking over the tab, or drop
+// it silently. So the anchor's default is always suppressed; we open a new
+// tab ourselves, and when the browser refuses, we show the address instead.
+document.getElementById('consoleLink').addEventListener('click', e => {
+  e.preventDefault();
+  const w = window.open('https://console.anthropic.com', '_blank');
+  if (!w) {
+    document.getElementById('consoleFallback').style.display = 'block';
+    document.getElementById('consoleHint').style.display = 'none';
+  }
 });
 document.getElementById('copyConsoleUrl').onclick = async e => {
   try {
