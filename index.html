@@ -800,6 +800,10 @@ document.getElementById('consoleLink').addEventListener('click', e => {
     document.getElementById('consoleFallback').style.display = 'block';
     document.getElementById('consoleHint').style.display = 'none';
   };
+  // Claude's embedded browser routes every open into the current view, no
+  // matter how it is asked. It names itself in the user agent, so there we
+  // never attempt to open anything: straight to the address box.
+  if (/ Claude\//.test(navigator.userAgent)) { showBox(); return; }
   const w = window.open('https://console.anthropic.com', '_blank');
   if (!w) { showBox(); return; }
   let opened = false;
