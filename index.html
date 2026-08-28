@@ -684,21 +684,34 @@ document.querySelectorAll('[data-copy]').forEach(btn => btn.onclick = async () =
 
 document.getElementById('speakBtn').onclick = () => {
   const enHe = direction === 'en-he';
-  const t = enHe ? document.getElementById('primary').textContent : input.value;
-  if (!t || t === '—'){ statusEl.className = 'status'; statusEl.textContent = 'Translate something first, then tap Speak.'; return; }
+  const plain = enHe ? document.getElementById('primary').textContent : input.value;
+  if (!plain || plain === '—'){ statusEl.className = 'status'; statusEl.textContent = 'Translate something first, then tap Speak.'; return; }
   if (!('speechSynthesis' in window)){ statusEl.className = 'status err'; statusEl.textContent = 'This browser cannot speak. On an iPhone it works.'; return; }
-  speechSynthesis.cancel(); // clears queued repeats and unwedges iOS after interruptions
-  const u = new SpeechSynthesisUtterance(t); u.lang = 'he-IL'; u.rate = 0.9;
-  statusEl.className = 'status';
-  statusEl.textContent = 'Speaking…';
-  speechSynthesis.speak(u);
-  setTimeout(() => {
-    if (!speechSynthesis.speaking && !speechSynthesis.pending && statusEl.textContent === 'Speaking…'){
+  // Speak the POINTED text when we have it: the vowel marks tell the voice
+  // exactly how to pronounce each word. Fall back to plain text if a device's
+  // engine cannot handle the marks.
+  const pointed = document.getElementById('niqqud').textContent;
+  const usePointed = pointed && pointed !== '—' && stripMarks(normHeb(pointed)) === normHeb(stripMarks(plain));
+  const say = txt => {
+    speechSynthesis.cancel(); // clears queued repeats and unwedges iOS after interruptions
+    const u = new SpeechSynthesisUtterance(txt); u.lang = 'he-IL'; u.rate = 0.9;
+    statusEl.className = 'status';
+    statusEl.textContent = 'Speaking…';
+    u.onend = () => { if (statusEl.textContent === 'Speaking…') { statusEl.className = 'status'; statusEl.textContent = 'Done'; } };
+    u.onerror = () => {
+      if (txt !== plain) { say(plain); return; } // pointed text tripped the engine, retry plain
       statusEl.className = 'status err';
-      statusEl.textContent = 'No Hebrew voice is available on this device. iPhones have one built in.';
-    }
-  }, 800);
-  u.onend = () => { if (statusEl.textContent === 'Speaking…') { statusEl.className = 'status'; statusEl.textContent = 'Done'; } };
+      statusEl.textContent = 'Speech failed on this device. iPhones have a Hebrew voice built in.';
+    };
+    speechSynthesis.speak(u);
+    setTimeout(() => {
+      if (!speechSynthesis.speaking && !speechSynthesis.pending && statusEl.textContent === 'Speaking…'){
+        statusEl.className = 'status err';
+        statusEl.textContent = 'No Hebrew voice is available on this device. iPhones have one built in.';
+      }
+    }, 800);
+  };
+  say(usePointed ? pointed : plain);
 };
 
 document.getElementById('micBtn').onclick = () => {
