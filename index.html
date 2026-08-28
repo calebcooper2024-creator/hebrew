@@ -39,6 +39,7 @@
   .btn.primary{background:var(--blue);color:white;border-color:var(--blue);font-weight:600;min-width:110px}
   .btn.primary:active{background:#1765cc}
   .btn:disabled{opacity:.5;cursor:default}
+  select.quality{appearance:none;-webkit-appearance:none;background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235f6368' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center;padding-right:28px;color:var(--text);font-size:14px}
   .output{margin-top:14px}
   .section{padding:16px 18px;border-bottom:1px solid var(--line)}
   .section:last-child{border-bottom:0}
@@ -104,6 +105,11 @@
       <button class="btn primary" id="translateBtn">Translate</button>
       <button class="btn" id="clearBtn">Clear</button>
       <button class="btn" id="micBtn">🎙 Speak</button>
+      <select class="btn quality" id="qualitySelect" title="Translation quality">
+        <option value="claude-sonnet-5">Great quality</option>
+        <option value="claude-opus-5">Highest quality</option>
+        <option value="claude-haiku-4-5">Fastest</option>
+      </select>
     </div>
     <div id="status" class="status">Ready</div>
   </div>
@@ -640,6 +646,16 @@ async function runTranslate(){
 }
 
 translateBtn.onclick = runTranslate;
+
+// Quality picker on the main screen, kept in sync with the one in Settings.
+const qualitySelect = document.getElementById('qualitySelect');
+qualitySelect.value = getModel();
+qualitySelect.onchange = () => {
+  lsSet('anthModel', qualitySelect.value);
+  lsDel('noSchema');
+  statusEl.className = 'status';
+  statusEl.textContent = 'Quality set to: ' + qualitySelect.options[qualitySelect.selectedIndex].text;
+};
 document.getElementById('clearBtn').onclick = () => { input.value=''; setOutput({}); statusEl.className='status'; statusEl.textContent='Ready'; manualDirection = false; input.focus(); };
 swapBtn.onclick = () => {
   if (busy) return;
@@ -713,6 +729,7 @@ function persistSettings(){
 
 document.getElementById('saveBtn').onclick = () => {
   persistSettings();
+  qualitySelect.value = getModel();
   document.getElementById('sheetStatus').className = 'status';
   document.getElementById('sheetStatus').textContent = 'Saved.';
   setTimeout(() => sheet.classList.remove('open'), 500);
