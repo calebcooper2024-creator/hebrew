@@ -685,10 +685,20 @@ document.querySelectorAll('[data-copy]').forEach(btn => btn.onclick = async () =
 document.getElementById('speakBtn').onclick = () => {
   const enHe = direction === 'en-he';
   const t = enHe ? document.getElementById('primary').textContent : input.value;
-  if (!('speechSynthesis' in window) || !t || t === '—') return;
+  if (!t || t === '—'){ statusEl.className = 'status'; statusEl.textContent = 'Translate something first, then tap Speak.'; return; }
+  if (!('speechSynthesis' in window)){ statusEl.className = 'status err'; statusEl.textContent = 'This browser cannot speak. On an iPhone it works.'; return; }
   speechSynthesis.cancel(); // clears queued repeats and unwedges iOS after interruptions
   const u = new SpeechSynthesisUtterance(t); u.lang = 'he-IL'; u.rate = 0.9;
+  statusEl.className = 'status';
+  statusEl.textContent = 'Speaking…';
   speechSynthesis.speak(u);
+  setTimeout(() => {
+    if (!speechSynthesis.speaking && !speechSynthesis.pending && statusEl.textContent === 'Speaking…'){
+      statusEl.className = 'status err';
+      statusEl.textContent = 'No Hebrew voice is available on this device. iPhones have one built in.';
+    }
+  }, 800);
+  u.onend = () => { if (statusEl.textContent === 'Speaking…') { statusEl.className = 'status'; statusEl.textContent = 'Done'; } };
 };
 
 document.getElementById('micBtn').onclick = () => {
@@ -699,7 +709,18 @@ document.getElementById('micBtn').onclick = () => {
   statusEl.className = 'status'; statusEl.textContent = 'Listening…';
   let gotResult = false;
   r.onresult = e => { gotResult = true; input.value = e.results[0][0].transcript; statusEl.textContent = 'Heard it'; runTranslate(); };
-  r.onerror = () => { statusEl.textContent = 'Speech input failed.'; };
+  r.onerror = e => {
+    gotResult = true; // suppress the generic onend message; we have a specific one
+    statusEl.className = 'status err';
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed')
+      statusEl.textContent = 'The microphone is blocked in this browser. On an iPhone, Safari asks permission and it works.';
+    else if (e.error === 'network')
+      statusEl.textContent = 'Voice input is not available in this browser. On an iPhone it works.';
+    else if (e.error === 'no-speech')
+      statusEl.textContent = 'Did not hear anything. Try again closer to the microphone.';
+    else
+      statusEl.textContent = 'Speech input failed (' + e.error + ').';
+  };
   r.onend = () => { if (!gotResult && statusEl.textContent === 'Listening…') statusEl.textContent = 'Did not catch that. Try again.'; };
   r.start();
 };
