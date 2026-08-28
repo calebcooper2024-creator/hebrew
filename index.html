@@ -153,7 +153,7 @@
     <div class="wizstep" data-step="1">
       <h3>Step 1 of 4: Create your account</h3>
       <p>Tap the button below to open Anthropic's website. Sign up there; the easiest way is to tap <b>Continue with Google</b> and use your Gmail. Then come back here.</p>
-      <a class="btn primary" href="https://console.anthropic.com" target="_blank" rel="noopener">Open console.anthropic.com</a>
+      <a class="btn primary" id="consoleLink" href="https://console.anthropic.com" target="_blank" rel="noopener">Open console.anthropic.com</a>
       <p style="margin-top:12px">If the site opens over this page, no problem: when you are done there, use your browser's <b>Back</b> button and this guide picks up right where you left off. You can also <button class="guidelink" id="copyConsoleUrl" style="padding:0;font-size:inherit">copy the address</button> and open it anywhere.</p>
     </div>
 
@@ -782,6 +782,14 @@ document.getElementById('wizTest').onclick = async () => {
 document.getElementById('guideBtn').onclick = () => {
   sheet.classList.remove('open');
   wizOpen(getKey() ? 1 : 0);
+};
+// Some embedded browsers silently drop target=_blank clicks. Guarantee the
+// button always does something: new tab when allowed, else navigate here
+// (the wizard's saved step brings the user back to this spot via Back).
+document.getElementById('consoleLink').onclick = e => {
+  e.preventDefault();
+  const w = window.open('https://console.anthropic.com', '_blank');
+  if (!w) location.href = 'https://console.anthropic.com';
 };
 document.getElementById('copyConsoleUrl').onclick = async e => {
   try {
