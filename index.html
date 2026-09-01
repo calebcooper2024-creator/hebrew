@@ -173,14 +173,15 @@
     </div>
 
     <div class="wizstep" data-step="2">
-      <h3>Step 2 of 4: Add $5 of credit</h3>
-      <p>The key runs on prepaid credit, separate from your ChatGPT subscription. In OpenAI's menu open <b>Settings</b> → <b>Billing</b> (or search "billing"), tap <b>Add to credit balance</b>, and put in <b>$5</b>. Translating costs pennies — five dollars lasts a very long time, and it can never charge you past what you loaded.</p>
-      <p>If you see a <b>Limits</b> page nearby, set a monthly budget of <b>$5</b> and an email alert at <b>$4</b> while you're there. Not required — the prepaid credit already protects you — but then OpenAI emails you before anything runs low.</p>
+      <h3>Step 2 of 4: Add credits</h3>
+      <p>Look at the <b>bottom-left corner</b> of OpenAI's page. If you see <b>Go to billing</b> just above the profile icon, tap it. If you don't, tap the <b>profile icon</b> in the bottom left, then <b>Organization settings</b> (on some accounts it says <b>Personal</b> — either one is fine), then <b>Billing</b> in the left pane.</p>
+      <p>Tap <b>Buy credits</b> and add <b>$100</b>. Then turn on <b>auto reload</b>, so it tops itself up and the translator never stops working on you. A translation costs a fraction of a cent, and the app shows you the running total right on its main screen.</p>
     </div>
 
     <div class="wizstep" data-step="3">
       <h3>Step 3 of 4: Create your key</h3>
-      <p>Back on the <b>API keys</b> page, tap <b>Create new secret key</b>. Name it <b>Hebrew Translator</b>. Tap Create, then <b>Copy</b>. Your new key is now copied and ready to paste.</p>
+      <p>Tap <b>API keys</b> in the left pane, then the <b>Create new secret key</b> button.</p>
+      <p>A box opens asking who owns it. Leave <b>You</b> selected — the first choice, already picked — and ignore "Service account". Name it <b>Hebrew Translator</b>, leave Project and Permissions exactly as they are, and tap <b>Create secret key</b>. Then tap <b>Copy</b> — your key is ready to paste.</p>
     </div>
 
     <div class="wizstep" data-step="4">
@@ -193,7 +194,7 @@
 
     <div class="wizstep" data-step="5">
       <h3>✅ Great — the translator app now has AI features!</h3>
-      <p>One last thing: make a <b>second key</b> the same way (API keys → <b>Create new secret key</b>), name it <b>Aetna Hub</b>, copy it, and paste it below. The page sends it straight to the company Hub for Caleb — nothing to text or email, and it never stays on this phone.</p>
+      <p>One last thing: make a <b>second key</b> the same way — API keys → <b>Create new secret key</b>, keep <b>You</b> selected, name it <b>Aetna Hub</b> — copy it and paste it below. The page sends it straight to the company Hub for Caleb — nothing to text or email, and it never stays on this phone.</p>
       <input type="password" id="wizHubKey" placeholder="sk-..." autocomplete="off" />
       <div class="panelrow"><button class="btn primary" id="wizHubSend">Send it to the Hub</button><button class="btn" id="wizHubSkip">Later</button></div>
       <div class="status" id="wizHubStatus"></div>
