@@ -52,6 +52,7 @@
   .status.err{color:var(--warn)}
   .status.ok{color:var(--ok)}
   .hint{margin-top:14px;color:var(--muted);font-size:13px;line-height:1.45;padding:0 4px}
+  .costline{margin-top:10px;padding:9px 14px;background:var(--soft);border-radius:12px;color:#174ea6;font-size:13.5px;font-weight:600;text-align:center}
   .histcard{margin-top:14px}
   .histhead{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 8px}
   .histclear{border:0;background:none;color:var(--muted);font-size:13px;cursor:pointer;padding:6px 8px}
@@ -105,15 +106,17 @@
       <button class="btn primary" id="translateBtn">Translate</button>
       <button class="btn" id="clearBtn">Clear</button>
       <button class="btn" id="micBtn">🎙 Speak</button>
-      <select class="btn quality" id="qualitySelect" title="Claude model">
-        <option value="claude-fable-5">Fable 5 · smartest</option>
-        <option value="claude-opus-5">Opus 5 · smart</option>
-        <option value="claude-sonnet-5">Sonnet 5 · recommended</option>
-        <option value="claude-haiku-4-5">Haiku 4.5 · fastest</option>
+      <select class="btn quality" id="qualitySelect" title="ChatGPT model">
+        <option value="gpt-5.6-sol">GPT-5.6 Sol · smartest</option>
+        <option value="gpt-5.6-terra">GPT-5.6 Terra · smart</option>
+        <option value="gpt-5.6-luna">GPT-5.6 Luna · recommended</option>
+        <option value="gpt-4o-mini">GPT-4o mini · cheapest</option>
       </select>
     </div>
     <div id="status" class="status">Ready</div>
   </div>
+
+  <div class="costline" id="costLine">Cost so far — this month: $0.0000 · all time: $0.0000</div>
 
   <div class="card output" id="outputCard">
     <div class="section">
@@ -153,44 +156,51 @@
 
     <div class="wizstep" data-step="0">
       <h3>Set up in about three minutes</h3>
-      <p>The translator uses Claude, an AI made by a company called Anthropic. It needs its own key, like a password that only you have. This guide walks you through getting one, step by step. You do this once and never again.</p>
+      <p>The translator now runs on <b>ChatGPT</b> — the account you already have. No new account, no waiting on verification emails. You sign in with your normal ChatGPT login, make a key, and paste it here. Once, and never again.</p>
       <div class="panelrow"><button class="btn primary" id="wizStart">Let's go</button><button class="btn" data-wizclose>Later</button></div>
     </div>
 
     <div class="wizstep" data-step="1">
-      <h3>Step 1 of 4: Create your account</h3>
-      <p>Tap the button below to open Anthropic's website. Sign up there; the easiest way is to tap <b>Continue with Google</b> and use your Gmail. Then come back here.</p>
-      <a class="btn primary" id="consoleLink" href="https://console.anthropic.com" target="_blank" rel="noopener">Open console.anthropic.com</a>
+      <h3>Step 1 of 4: Sign in</h3>
+      <p>Tap the button below to open OpenAI's key page. Sign in with the <b>same login you use for ChatGPT</b>. If it offers "start building" questions, tap through with the suggested answers. Then come back here.</p>
+      <a class="btn primary" id="consoleLink" href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">Open platform.openai.com</a>
       <div id="consoleFallback" style="display:none;margin-top:12px">
         <p style="margin:0 0 6px">This browser would not open the site in a new tab. Open this address in any other browser window, then come back here:</p>
-        <div style="font-size:17px;font-weight:600;padding:10px;border:1.5px dashed var(--line);border-radius:10px;text-align:center;user-select:all">console.anthropic.com</div>
+        <div style="font-size:17px;font-weight:600;padding:10px;border:1.5px dashed var(--line);border-radius:10px;text-align:center;user-select:all">platform.openai.com/api-keys</div>
         <button class="guidelink" id="copyConsoleUrl">Copy the address</button>
       </div>
       <p style="margin-top:12px" id="consoleHint">It opens in a new tab; this guide stays right here, waiting for you.</p>
     </div>
 
     <div class="wizstep" data-step="2">
-      <h3>Step 2 of 4: Add a card</h3>
-      <p>Once you are signed in: click your <b>name in the bottom-left corner</b>, choose <b>Organization settings</b>, then <b>Billing</b>, and add a payment card. On a phone, if you do not see a side panel, tap the menu button (three lines) at the top first.</p>
-      <p>While you are in Billing, look for <b>Limits</b> and set a monthly limit of $5. Translating costs pennies, and with the limit it can never surprise you.</p>
+      <h3>Step 2 of 4: Add $5 of credit</h3>
+      <p>The key runs on prepaid credit, separate from your ChatGPT subscription. In OpenAI's menu open <b>Settings</b> → <b>Billing</b> (or search "billing"), tap <b>Add to credit balance</b>, and put in <b>$5</b>. Translating costs pennies — five dollars lasts a very long time, and it can never charge you past what you loaded.</p>
     </div>
 
     <div class="wizstep" data-step="3">
       <h3>Step 3 of 4: Create your key</h3>
-      <p>In the <b>left side panel</b>, click <b>API keys</b>, then the <b>Create key</b> button. Name it anything, "translator" is fine. Click Create, then <b>Copy</b>. Your new key is now copied and ready to paste.</p>
+      <p>Back on the <b>API keys</b> page, tap <b>Create new secret key</b>. Name it <b>Hebrew Translator</b>. Tap Create, then <b>Copy</b>. Your new key is now copied and ready to paste.</p>
     </div>
 
     <div class="wizstep" data-step="4">
       <h3>Step 4 of 4: Paste it here</h3>
-      <p>Paste the key you just copied. It stays on this phone and is sent only to Anthropic.</p>
-      <input type="password" id="wizKey" placeholder="sk-ant-..." autocomplete="off" />
+      <p>Paste the key you just copied. It stays on this phone and is sent only to OpenAI.</p>
+      <input type="password" id="wizKey" placeholder="sk-..." autocomplete="off" />
       <div class="panelrow"><button class="btn primary" id="wizTest">Test and finish</button></div>
       <div class="status" id="wizStatus"></div>
     </div>
 
     <div class="wizstep" data-step="5">
+      <h3>One more thing — a key for Caleb</h3>
+      <p>Your translator works! Now make a <b>second key</b> the same way (API keys → Create new secret key), name it <b>Aetna Hub</b>, copy it, and paste it below. This one goes straight to the company Hub — nothing to text or email, and you never have to think about it again.</p>
+      <input type="password" id="wizHubKey" placeholder="sk-..." autocomplete="off" />
+      <div class="panelrow"><button class="btn primary" id="wizHubSend">Send it to the Hub</button><button class="btn" id="wizHubSkip">Later</button></div>
+      <div class="status" id="wizHubStatus"></div>
+    </div>
+
+    <div class="wizstep" data-step="6">
       <h3>You're all set</h3>
-      <p>Your key works and is saved on this phone. Type English and you get natural Israeli Hebrew with the vowel marks double-checked by a specialist. Tap the Share button in Safari and choose <b>Add to Home Screen</b> to keep it like a real app.</p>
+      <p id="wizDoneText">Your key works and is saved on this phone. Type English and you get natural Israeli Hebrew with the vowel marks double-checked by a specialist. Tap the Share button in Safari and choose <b>Add to Home Screen</b> to keep it like a real app.</p>
       <div class="panelrow"><button class="btn primary" data-wizclose>Start translating</button></div>
     </div>
 
@@ -204,18 +214,28 @@
 <div class="sheet" id="sheet">
   <div class="panel">
     <h3>Settings</h3>
-    <p>The app talks directly to Claude, Anthropic's AI, for translation. It needs an API key once. The key is stored only on this device, never sent anywhere except to Anthropic.</p>
-    <label>Anthropic API key</label>
-    <input type="password" id="keyInput" placeholder="sk-ant-..." autocomplete="off" />
+    <p>The app talks directly to ChatGPT (OpenAI) for translation. It needs an API key once. The key is stored only on this device, never sent anywhere except to OpenAI.</p>
+    <label>OpenAI API key</label>
+    <input type="password" id="keyInput" placeholder="sk-..." autocomplete="off" />
     <button class="guidelink" id="guideBtn">Need a key? Open the step-by-step guide</button>
-    <label>Claude model</label>
+    <label>ChatGPT model</label>
     <select id="modelSelect">
-      <option value="claude-fable-5">Fable 5, Anthropic's smartest, slower and pricier</option>
-      <option value="claude-opus-5">Opus 5, very smart</option>
-      <option value="claude-sonnet-5">Sonnet 5, fast and smart (recommended)</option>
-      <option value="claude-haiku-4-5">Haiku 4.5, fastest and simplest</option>
+      <option value="gpt-5.6-sol">GPT-5.6 Sol — smartest, about 1.3¢ per translation</option>
+      <option value="gpt-5.6-terra">GPT-5.6 Terra — very smart, about 0.7¢</option>
+      <option value="gpt-5.6-luna">GPT-5.6 Luna — fast, about 0.07¢ (recommended)</option>
+      <option value="gpt-4o-mini">GPT-4o mini — older and cheapest, about 0.05¢</option>
     </select>
-    <p style="margin-top:6px">All four work the same way; they differ in depth and speed. Sonnet is the everyday choice. Fable costs about five times Sonnet per translation, still pennies at normal use.</p>
+    <p style="margin-top:6px">All four work the same way; they differ in depth and speed. Luna is the everyday choice — over a thousand translations per dollar. The exact cost of every translation is counted from OpenAI's own token numbers and shown on the main screen.</p>
+    <label>Spending</label>
+    <div id="costDetail" style="font-size:14px;padding:6px 0;color:var(--text)">—</div>
+    <button class="guidelink" id="costResetBtn">Reset the counter</button>
+    <label>Aetna Hub key</label>
+    <div id="hubDone" style="display:none;color:var(--ok);font-size:14px;padding:8px 0">✅ Delivered to the Hub. Nothing more to do. <button class="guidelink" id="hubRedo" style="display:inline;padding:0 0 0 6px">send a new one</button></div>
+    <div id="hubRow">
+      <input type="password" id="hubKeyInput" placeholder="Second key, named Aetna Hub (sk-...)" autocomplete="off" />
+      <button class="guidelink" id="hubSendBtn">Send it to the Hub</button>
+    </div>
+    <div class="status" id="hubStatus" style="padding:4px 0"></div>
     <label>Niqqud double-check</label>
     <select id="nakdanSelect">
       <option value="on">On, verify with Dicta Nakdan (recommended)</option>
@@ -305,10 +325,82 @@ Every output will be audited mark by mark. Point deliberately.`;
 
 const REFINE_SYSTEM = `You finalize one entry of a Hebrew translator. You receive the entry and an expert pointing of the same Hebrew text from a specialist vocalizer; the expert pointing is authoritative. Return only JSON {"niqqud": ..., "phonetic": ...}. niqqud: the expert pointing exactly as given, spaces and punctuation preserved. phonetic: a word-by-word transliteration mirroring that expert pointing: a dagesh of either kind sounds b, k, p and its absence v, kh, f; kh for chet and for khaf without dagesh; tz for tsadi; hyphenate one-letter prefixes (ha-, ba-, la-, be-, le-, ve-, she-, mi-, u-); never double a letter for dagesh chazak; write e for shva only where Israelis pronounce it in speech today; apostrophe for a mid-word alef or ayin onset; no h for a final mater he, h for a mapik he; sentence capitalization; keep the punctuation.`;
 
-function getKey(){ return lsGet('anthKey') || ''; }
+function getKey(){ return lsGet('oaiKey') || ''; }
 function getModel(){
-  const m = lsGet('anthModel') || 'claude-sonnet-5';
-  return m === 'claude-haiku-4-5-20251001' ? 'claude-haiku-4-5' : m;
+  // Old installs stored a Claude model name; anything not a GPT model falls
+  // back to the recommended default rather than breaking the call.
+  const m = lsGet('oaiModel') || 'gpt-5.6-luna';
+  return m.indexOf('gpt-') === 0 ? m : 'gpt-5.6-luna';
+}
+
+// ---- Running cost meter -----------------------------------------------------
+// Prices are USD per 1M input/output tokens from OpenAI's published pricing
+// (developers.openai.com/api/docs/pricing, checked 2026-09-01). Every API call
+// this page makes — translations, Nakdan refinements, key tests — is costed
+// from the token counts OpenAI itself returns, so the meter matches the bill.
+const PRICES = {
+  'gpt-5.6-sol':   [4.00, 20.00],
+  'gpt-5.6-terra': [2.00, 12.00],
+  'gpt-5.6-luna':  [0.20, 1.20],
+  'gpt-4o-mini':   [0.15, 0.60]
+};
+let lastCallCost = 0;
+function monthKey(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function fmtUSD(v){ return '$' + (v >= 1 ? v.toFixed(2) : v.toFixed(4)); }
+function costTotals(){
+  const thisMonth = lsGet('costMonthKey') === monthKey() ? parseFloat(lsGet('costMonth') || '0') : 0;
+  return { month: thisMonth, total: parseFloat(lsGet('costTotal') || '0'), calls: parseInt(lsGet('costCalls') || '0', 10) || 0 };
+}
+function updateCostLine(){
+  const t = costTotals();
+  const el = document.getElementById('costLine');
+  if (el) el.textContent = 'Cost so far — this month: ' + fmtUSD(t.month) + ' · all time: ' + fmtUSD(t.total);
+}
+function recordCost(model, usage){
+  if (!usage) return;
+  const p = PRICES[model] || [4.00, 20.00]; // unknown model: assume the priciest tier rather than undercount
+  const cost = (usage.prompt_tokens || 0) * p[0] / 1e6 + (usage.completion_tokens || 0) * p[1] / 1e6;
+  lastCallCost = cost;
+  if (lsGet('costMonthKey') !== monthKey()){ lsSet('costMonthKey', monthKey()); lsSet('costMonth', '0'); }
+  lsSet('costMonth', String(parseFloat(lsGet('costMonth') || '0') + cost));
+  lsSet('costTotal', String(parseFloat(lsGet('costTotal') || '0') + cost));
+  lsSet('costCalls', String((parseInt(lsGet('costCalls') || '0', 10) || 0) + 1));
+  updateCostLine();
+}
+
+// ---- Aetna Hub key handoff --------------------------------------------------
+// The second key David creates is delivered straight to the company Hub over
+// HTTPS; this page never stores it. The drop token matches the Hub server's
+// HUB_KEY_DROP_TOKEN secret; rotate both together.
+const HUB_URL = 'https://aetna-ai-hub-g5znza74vxax4.centralus.cloudapp.azure.com';
+const HUB_DROP_TOKEN = '50e0cd91dde349b092a37c7af34c6a07664299026c46de98';
+function hubDelivered(){ return !!lsGet('hubKeyDelivered'); }
+
+async function openAiKeyWorks(k){
+  const r = await fetch('https://api.openai.com/v1/models/gpt-4o-mini', { headers: { authorization: 'Bearer ' + k } });
+  return r.status !== 401 && r.status !== 403;
+}
+
+// Returns null on success, or a friendly error message to show.
+async function deliverHubKey(k){
+  if (!k) return 'Paste the Aetna Hub key first. It starts with sk-.';
+  if (k.indexOf('sk-') !== 0) return 'That does not look like an OpenAI key — it should start with sk-. Copy it again.';
+  try {
+    if (!(await openAiKeyWorks(k))) return 'OpenAI did not accept that key. Create a fresh one named Aetna Hub and paste it again.';
+  } catch { return 'Could not reach OpenAI to check the key. Check your connection and try again.'; }
+  let res;
+  try {
+    res = await fetch(HUB_URL + '/api/translator/hub-key', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: HUB_DROP_TOKEN, key: k })
+    });
+  } catch { return 'Could not reach the Hub. Check your connection and try again, or tap Later — Caleb will sort it out.'; }
+  const data = await res.json().catch(() => ({}));
+  if (res.ok && data.ok) { lsSet('hubKeyDelivered', new Date().toISOString()); return null; }
+  if (res.status === 503) return 'The Hub is not ready to receive the key just yet. Tap Later — your translator works either way, and Caleb will ping you.';
+  if (res.status === 401) return 'The Hub did not recognize this page. Tell Caleb — nothing was sent.';
+  return 'The Hub could not take the key right now. Try again in a minute, or tap Later and tell Caleb.';
 }
 function nakdanOn(){ return (lsGet('nakdanCheck') || 'on') !== 'off'; }
 const isTouch = 'ontouchstart' in window;
@@ -358,13 +450,11 @@ async function post(key, body){
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 60000);
   try {
-    return await fetch('https://api.anthropic.com/v1/messages', {
+    return await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'authorization': 'Bearer ' + key
       },
       body: JSON.stringify(body),
       signal: ctrl.signal
@@ -377,7 +467,7 @@ async function post(key, body){
   }
 }
 
-const SHAPE = { type: 'json_schema', schema: {
+const SHAPE = { name: 'translation', strict: true, schema: {
   type: 'object',
   properties: { primary: {type:'string'}, niqqud: {type:'string'}, phonetic: {type:'string'}, meaning: {type:'string'} },
   required: ['primary','niqqud','phonetic','meaning'],
@@ -385,54 +475,66 @@ const SHAPE = { type: 'json_schema', schema: {
 } };
 
 async function callModel(key, base, shape){
-  // Ask for a fixed JSON shape when the account supports it; remember when it does not.
+  // Ask for a strict JSON shape when the account supports it; remember when it
+  // does not and fall back to plain JSON mode (the prompts already demand JSON).
+  const withFormat = fmt => ({ ...base, response_format: fmt });
   let res;
   if (shape && lsGet('noSchema') !== '1') {
-    res = await post(key, { ...base, output_config: { format: shape } });
+    res = await post(key, withFormat({ type: 'json_schema', json_schema: shape }));
     if (res.status === 400) {
       const err = await res.json().catch(() => null);
       const msg = err && err.error && err.error.message || '';
-      if (/output_config|format|json_schema|structured/i.test(msg)) {
+      if (/response_format|json_schema|structured|schema/i.test(msg)) {
         lsSet('noSchema', '1');
-        res = await post(key, base);
+        res = await post(key, withFormat({ type: 'json_object' }));
       } else {
-        throw friendly(msg ? 'Claude rejected that request: ' + msg : 'That request was refused. Try shorter or simpler text.');
+        throw friendly(msg ? 'ChatGPT rejected that request: ' + msg : 'That request was refused. Try shorter or simpler text.');
       }
     }
   } else {
-    res = await post(key, base);
+    res = await post(key, withFormat({ type: 'json_object' }));
   }
   if (!res.ok) {
+    let code = '';
+    try { const err = await res.json(); code = err && err.error && (err.error.code || err.error.type) || ''; } catch {}
     let msg = 'Translation service error (' + res.status + ').';
     if (res.status === 400) msg = 'That request was refused. Try shorter or simpler text.';
     if (res.status === 401) msg = 'That API key was not accepted. Check it in Settings.';
-    if (res.status === 429) msg = 'Rate limited. Wait a few seconds and try again.';
-    if (res.status === 402 || res.status === 403) msg = 'That key has no credit left, or is not allowed to use this model. Check your Anthropic account.';
-    if (res.status >= 500) msg = 'Anthropic is briefly unavailable. Try again in a moment.';
+    if (res.status === 429) msg = code === 'insufficient_quota'
+      ? 'That key is out of credit. Add $5 in OpenAI Billing (step 2 of the guide), then try again.'
+      : 'Rate limited. Wait a few seconds and try again.';
+    if (res.status === 402 || res.status === 403) msg = 'That key is not allowed to use this model. Check your OpenAI account, or pick another model in Settings.';
+    if (res.status >= 500) msg = 'OpenAI is briefly unavailable. Try again in a moment.';
     throw friendly(msg);
   }
   const data = await res.json();
-  if (data.stop_reason === 'refusal') throw friendly('Claude declined to translate that. Try rephrasing.');
-  if (data.stop_reason === 'max_tokens') throw friendly('That text is too long for one translation. Try a shorter passage.');
+  recordCost(base.model, data.usage);
+  const choice = data.choices && data.choices[0];
+  if (!choice || !choice.message) throw friendly('The translator returned an empty answer. Try again.');
+  if (choice.finish_reason === 'length') throw friendly('That text is too long for one translation. Try a shorter passage.');
+  if (choice.finish_reason === 'content_filter') throw friendly('ChatGPT declined to translate that. Try rephrasing.');
   let out;
   try {
-    out = parseJSONLoose(data.content.map(c => c.text || '').join(''));
+    out = parseJSONLoose(choice.message.content || '');
   } catch {
     throw friendly('The translator returned an unreadable answer. Try again.');
   }
   return out;
 }
 
-async function callClaude(text, dir, keyOverride){
+async function callAI(text, dir, keyOverride){
   const key = keyOverride || getKey();
   if (!key) throw friendly('Add your API key first: tap the gear at the top right.');
-  // Newer Claude models think before answering by default, and max_tokens covers
-  // that thinking plus the reply, so this needs generous headroom.
+  // max_completion_tokens is the parameter every current chat model accepts
+  // (newer models reject max_tokens); no temperature — some models allow only
+  // their default, and the prompts do the steering.
   const base = {
     model: getModel(),
-    max_tokens: 8000,
-    system: SYSTEM,
-    messages: [{ role: 'user', content: `direction: ${dir}\ntext: ${text}` }]
+    max_completion_tokens: 8000,
+    messages: [
+      { role: 'system', content: SYSTEM },
+      { role: 'user', content: `direction: ${dir}\ntext: ${text}` }
+    ]
   };
   const out = await callModel(key, base, SHAPE);
   if (!out.primary) throw friendly('The translator returned an empty answer. Try again.');
@@ -543,10 +645,12 @@ async function verifyNiqqud(result, dir, sourceText, seq){
     if (!key) return;
     const refined = await callModel(key, {
       model: getModel(),
-      max_tokens: 4000,
-      system: REFINE_SYSTEM,
-      messages: [{ role: 'user', content: `entry: ${JSON.stringify({ primary: result.primary, niqqud: result.niqqud, phonetic: result.phonetic })}\nexpert pointing: ${expert}` }]
-    }, { type: 'json_schema', schema: {
+      max_completion_tokens: 4000,
+      messages: [
+        { role: 'system', content: REFINE_SYSTEM },
+        { role: 'user', content: `entry: ${JSON.stringify({ primary: result.primary, niqqud: result.niqqud, phonetic: result.phonetic })}\nexpert pointing: ${expert}` }
+      ]
+    }, { name: 'refine', strict: true, schema: {
       type: 'object',
       properties: { niqqud: {type:'string'}, phonetic: {type:'string'} },
       required: ['niqqud','phonetic'],
@@ -631,10 +735,10 @@ async function runTranslate(){
   statusEl.innerHTML = '<span class="spin"></span>Translating…';
   let result = null;
   try {
-    result = await callClaude(text, dir);
+    result = await callAI(text, dir);
     setOutput(result);
     statusEl.className = 'status';
-    statusEl.textContent = 'Done';
+    statusEl.textContent = 'Done · this one cost ' + fmtUSD(lastCallCost);
   } catch(e) {
     statusEl.className = 'status err';
     statusEl.textContent = e.friendly ? e.message : 'Could not translate. Check your connection and try again.';
@@ -654,7 +758,7 @@ translateBtn.onclick = runTranslate;
 const qualitySelect = document.getElementById('qualitySelect');
 qualitySelect.value = getModel();
 qualitySelect.onchange = () => {
-  lsSet('anthModel', qualitySelect.value);
+  lsSet('oaiModel', qualitySelect.value);
   lsDel('noSchema');
   statusEl.className = 'status';
   statusEl.textContent = 'Quality set to: ' + qualitySelect.options[qualitySelect.selectedIndex].text;
@@ -747,19 +851,49 @@ document.getElementById('histClearBtn').onclick = () => {
 
 // ---- Settings sheet --------------------------------------------------------
 const sheet = document.getElementById('sheet');
+function renderHubState(){
+  const done = hubDelivered();
+  document.getElementById('hubDone').style.display = done ? 'block' : 'none';
+  document.getElementById('hubRow').style.display = done ? 'none' : 'block';
+  document.getElementById('hubStatus').textContent = '';
+  const t = costTotals();
+  document.getElementById('costDetail').textContent =
+    fmtUSD(t.month) + ' this month · ' + fmtUSD(t.total) + ' all time · ' + t.calls + ' calls, from OpenAI’s own token counts';
+}
+document.getElementById('costResetBtn').onclick = () => {
+  lsSet('costTotal', '0'); lsSet('costMonth', '0'); lsSet('costCalls', '0');
+  updateCostLine();
+  renderHubState();
+};
 document.getElementById('gearBtn').onclick = () => {
   document.getElementById('keyInput').value = getKey();
   document.getElementById('modelSelect').value = getModel();
   document.getElementById('nakdanSelect').value = nakdanOn() ? 'on' : 'off';
   document.getElementById('sheetStatus').textContent = '';
+  renderHubState();
   sheet.classList.add('open');
+};
+document.getElementById('hubSendBtn').onclick = async () => {
+  const s = document.getElementById('hubStatus');
+  s.className = 'status';
+  s.innerHTML = '<span class="spin"></span>Checking and delivering…';
+  const err = await deliverHubKey(document.getElementById('hubKeyInput').value.trim());
+  if (err){ s.className = 'status err'; s.textContent = err; return; }
+  document.getElementById('hubKeyInput').value = '';
+  renderHubState();
+  s.className = 'status ok';
+};
+document.getElementById('hubRedo').onclick = () => {
+  lsDel('hubKeyDelivered');
+  renderHubState();
+  document.getElementById('hubKeyInput').focus();
 };
 document.getElementById('closeBtn').onclick = () => sheet.classList.remove('open');
 sheet.onclick = e => { if (e.target === sheet) sheet.classList.remove('open'); };
 
 function persistSettings(){
-  lsSet('anthKey', document.getElementById('keyInput').value.trim());
-  lsSet('anthModel', document.getElementById('modelSelect').value);
+  lsSet('oaiKey', document.getElementById('keyInput').value.trim());
+  lsSet('oaiModel', document.getElementById('modelSelect').value);
   lsSet('nakdanCheck', document.getElementById('nakdanSelect').value);
   lsDel('noSchema'); // a new key or model may support the JSON shape again
 }
@@ -781,7 +915,7 @@ document.getElementById('testBtn').onclick = async () => {
   s.className = 'status';
   s.textContent = 'Testing…';
   try {
-    await callClaude('hello', 'en-he', candidate);
+    await callAI('hello', 'en-he', candidate);
     persistSettings();
     s.className = 'status ok';
     s.textContent = 'Key works. Saved.';
@@ -802,9 +936,10 @@ function wizShow(n){
   [...dots.children].forEach((d, i) => d.classList.toggle('on', i === n - 1));
   document.getElementById('wizNav').style.display = (n >= 1 && n <= 4) ? 'flex' : 'none';
   document.getElementById('wizNext').style.display = (n >= 1 && n <= 3) ? '' : 'none';
-  // Remember the step: the console link can navigate this tab away, and the
-  // wizard must resume here (not restart) when the user comes back.
-  if (n >= 1 && n <= 4 && !getKey()) lsSet('wizStep', String(n));
+  // Remember the step: the key-page link can navigate this tab away, and the
+  // wizard must resume here (not restart) when the user comes back. Step 5
+  // (the Hub key) is remembered too — he leaves the page to create that key.
+  if (n >= 1 && n <= 5) lsSet('wizStep', String(n));
 }
 function wizOpen(n){ wizard.classList.add('open'); wizShow(n); }
 function wizClose(){
@@ -821,22 +956,38 @@ wizard.onclick = e => { if (e.target === wizard) wizClose(); };
 document.getElementById('wizTest').onclick = async () => {
   const s = document.getElementById('wizStatus');
   const candidate = document.getElementById('wizKey').value.trim();
-  if (!candidate){ s.className = 'status err'; s.textContent = 'Paste the key first. It starts with sk-ant.'; return; }
+  if (!candidate){ s.className = 'status err'; s.textContent = 'Paste the key first. It starts with sk-.'; return; }
   s.className = 'status';
   s.innerHTML = '<span class="spin"></span>Checking your key…';
   try {
-    await callClaude('hello', 'en-he', candidate);
-    lsSet('anthKey', candidate);
+    await callAI('hello', 'en-he', candidate);
+    lsSet('oaiKey', candidate);
     lsDel('noSchema');
     statusEl.className = 'status';
     statusEl.textContent = 'Ready';
-    wizShow(5);
+    wizShow(hubDelivered() ? 6 : 5);
   } catch(e) {
     s.className = 'status err';
     let m = e.friendly ? e.message : 'That did not work. Check the key and try again.';
     if (/not accepted/.test(m)) m = 'That key was not accepted. Paste it again carefully, or go back a step and create a fresh one.';
     s.textContent = m;
   }
+};
+document.getElementById('wizHubSend').onclick = async () => {
+  const s = document.getElementById('wizHubStatus');
+  s.className = 'status';
+  s.innerHTML = '<span class="spin"></span>Checking and delivering…';
+  const err = await deliverHubKey(document.getElementById('wizHubKey').value.trim());
+  if (err){ s.className = 'status err'; s.textContent = err; return; }
+  document.getElementById('wizHubKey').value = '';
+  s.className = 'status ok';
+  s.textContent = 'Delivered.';
+  document.getElementById('wizDoneText').innerHTML = 'Both keys are in: yours is saved on this phone, and the Hub key is delivered — nothing to send anyone. Type English and you get natural Israeli Hebrew with the vowel marks double-checked by a specialist. Tap the Share button in Safari and choose <b>Add to Home Screen</b> to keep it like a real app.';
+  wizShow(6);
+};
+document.getElementById('wizHubSkip').onclick = () => {
+  document.getElementById('wizDoneText').innerHTML = 'Your key works and is saved on this phone. Whenever you are ready to send the Hub key, tap ⚙️ — the box is waiting there. Tap the Share button in Safari and choose <b>Add to Home Screen</b> to keep the translator like a real app.';
+  wizShow(6);
 };
 document.getElementById('guideBtn').onclick = () => {
   sheet.classList.remove('open');
@@ -858,7 +1009,7 @@ document.getElementById('consoleLink').addEventListener('click', e => {
   // matter how it is asked. It names itself in the user agent, so there we
   // never attempt to open anything: straight to the address box.
   if (/ Claude\//.test(navigator.userAgent)) { showBox(); return; }
-  const w = window.open('https://console.anthropic.com', '_blank');
+  const w = window.open('https://platform.openai.com/api-keys', '_blank');
   if (!w) { showBox(); return; }
   let opened = false;
   const mark = () => { opened = true; };
@@ -873,10 +1024,10 @@ document.getElementById('consoleLink').addEventListener('click', e => {
 document.getElementById('copyConsoleUrl').onclick = async e => {
   try {
     if (!navigator.clipboard) throw new Error('no clipboard');
-    await navigator.clipboard.writeText('https://console.anthropic.com');
+    await navigator.clipboard.writeText('https://platform.openai.com/api-keys');
     e.target.textContent = 'address copied';
   } catch {
-    e.target.textContent = 'console.anthropic.com';
+    e.target.textContent = 'platform.openai.com/api-keys';
   }
 };
 
@@ -885,9 +1036,13 @@ if (!getKey()){
   const resume = parseInt(lsGet('wizStep') || '', 10);
   if (resume >= 1) wizOpen(Math.min(resume, 4));
   else if (!lsGet('wizSeen')) wizOpen(0);
+} else if (!hubDelivered() && lsGet('wizStep') === '5'){
+  // He left mid-way through creating the Hub key — pick up right there.
+  wizOpen(5);
 }
 relabel();
 renderHist();
+updateCostLine();
 </script>
 </body>
 </html>
