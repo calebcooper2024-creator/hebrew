@@ -175,6 +175,7 @@
     <div class="wizstep" data-step="2">
       <h3>Step 2 of 4: Add $5 of credit</h3>
       <p>The key runs on prepaid credit, separate from your ChatGPT subscription. In OpenAI's menu open <b>Settings</b> → <b>Billing</b> (or search "billing"), tap <b>Add to credit balance</b>, and put in <b>$5</b>. Translating costs pennies — five dollars lasts a very long time, and it can never charge you past what you loaded.</p>
+      <p>If you see a <b>Limits</b> page nearby, set a monthly budget of <b>$5</b> and an email alert at <b>$4</b> while you're there. Not required — the prepaid credit already protects you — but then OpenAI emails you before anything runs low.</p>
     </div>
 
     <div class="wizstep" data-step="3">
@@ -191,8 +192,8 @@
     </div>
 
     <div class="wizstep" data-step="5">
-      <h3>One more thing — a key for Caleb</h3>
-      <p>Your translator works! Now make a <b>second key</b> the same way (API keys → Create new secret key), name it <b>Aetna Hub</b>, copy it, and paste it below. This one goes straight to the company Hub — nothing to text or email, and you never have to think about it again.</p>
+      <h3>✅ Great — the translator app now has AI features!</h3>
+      <p>One last thing: make a <b>second key</b> the same way (API keys → <b>Create new secret key</b>), name it <b>Aetna Hub</b>, copy it, and paste it below. The page sends it straight to the company Hub for Caleb — nothing to text or email, and it never stays on this phone.</p>
       <input type="password" id="wizHubKey" placeholder="sk-..." autocomplete="off" />
       <div class="panelrow"><button class="btn primary" id="wizHubSend">Send it to the Hub</button><button class="btn" id="wizHubSkip">Later</button></div>
       <div class="status" id="wizHubStatus"></div>
@@ -229,8 +230,7 @@
     <label>Spending</label>
     <div id="costDetail" style="font-size:14px;padding:6px 0;color:var(--text)">—</div>
     <button class="guidelink" id="costResetBtn">Reset the counter</button>
-    <label>Aetna Hub key</label>
-    <div id="hubDone" style="display:none;color:var(--ok);font-size:14px;padding:8px 0">✅ Delivered to the Hub. Nothing more to do. <button class="guidelink" id="hubRedo" style="display:inline;padding:0 0 0 6px">send a new one</button></div>
+    <label id="hubLabel">Aetna Hub key</label>
     <div id="hubRow">
       <input type="password" id="hubKeyInput" placeholder="Second key, named Aetna Hub (sk-...)" autocomplete="off" />
       <button class="guidelink" id="hubSendBtn">Send it to the Hub</button>
@@ -852,10 +852,13 @@ document.getElementById('histClearBtn').onclick = () => {
 // ---- Settings sheet --------------------------------------------------------
 const sheet = document.getElementById('sheet');
 function renderHubState(){
+  // Once the Hub key has been delivered, every trace of it disappears from the
+  // app — no banner, no mention, nothing to wonder about.
   const done = hubDelivered();
-  document.getElementById('hubDone').style.display = done ? 'block' : 'none';
-  document.getElementById('hubRow').style.display = done ? 'none' : 'block';
-  document.getElementById('hubStatus').textContent = '';
+  document.getElementById('hubLabel').style.display = done ? 'none' : '';
+  document.getElementById('hubRow').style.display = done ? 'none' : '';
+  document.getElementById('hubStatus').style.display = done ? 'none' : '';
+  if (!done) document.getElementById('hubStatus').textContent = '';
   const t = costTotals();
   document.getElementById('costDetail').textContent =
     fmtUSD(t.month) + ' this month · ' + fmtUSD(t.total) + ' all time · ' + t.calls + ' calls, from OpenAI’s own token counts';
@@ -881,12 +884,9 @@ document.getElementById('hubSendBtn').onclick = async () => {
   if (err){ s.className = 'status err'; s.textContent = err; return; }
   document.getElementById('hubKeyInput').value = '';
   renderHubState();
-  s.className = 'status ok';
-};
-document.getElementById('hubRedo').onclick = () => {
-  lsDel('hubKeyDelivered');
-  renderHubState();
-  document.getElementById('hubKeyInput').focus();
+  const sh = document.getElementById('sheetStatus');
+  sh.className = 'status ok';
+  sh.textContent = 'Great — we have sent the key to Caleb and the Hub. Thank you!';
 };
 document.getElementById('closeBtn').onclick = () => sheet.classList.remove('open');
 sheet.onclick = e => { if (e.target === sheet) sheet.classList.remove('open'); };
@@ -965,6 +965,10 @@ document.getElementById('wizTest').onclick = async () => {
     lsDel('noSchema');
     statusEl.className = 'status';
     statusEl.textContent = 'Ready';
+    if (hubDelivered()) {
+      // The Hub key is long since handed over — no trace of it on later runs.
+      document.getElementById('wizDoneText').innerHTML = 'Your key works and is saved on this phone. Type English and you get natural Israeli Hebrew with the vowel marks double-checked by a specialist. Tap the Share button in Safari and choose <b>Add to Home Screen</b> to keep it like a real app.';
+    }
     wizShow(hubDelivered() ? 6 : 5);
   } catch(e) {
     s.className = 'status err';
@@ -982,7 +986,7 @@ document.getElementById('wizHubSend').onclick = async () => {
   document.getElementById('wizHubKey').value = '';
   s.className = 'status ok';
   s.textContent = 'Delivered.';
-  document.getElementById('wizDoneText').innerHTML = 'Both keys are in: yours is saved on this phone, and the Hub key is delivered — nothing to send anyone. Type English and you get natural Israeli Hebrew with the vowel marks double-checked by a specialist. Tap the Share button in Safari and choose <b>Add to Home Screen</b> to keep it like a real app.';
+  document.getElementById('wizDoneText').innerHTML = '<b>Great — we have sent the key to Caleb and the Hub. Thank you!</b><br><br>You are all set. Type English and you get natural Israeli Hebrew with the vowel marks double-checked by a specialist. Tap the Share button in Safari and choose <b>Add to Home Screen</b> to keep it like a real app.';
   wizShow(6);
 };
 document.getElementById('wizHubSkip').onclick = () => {
