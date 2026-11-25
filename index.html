@@ -192,14 +192,6 @@
       <div class="status" id="wizStatus"></div>
     </div>
 
-    <div class="wizstep" data-step="5">
-      <h3>✅ Great — the translator app now has AI features!</h3>
-      <p>One last thing: make a <b>second key</b> the same way — API keys → <b>Create new secret key</b>, keep <b>You</b> selected, name it <b>Aetna Hub</b> — copy it and paste it below. The page sends it straight to the company Hub for Caleb — nothing to text or email, and it never stays on this phone.</p>
-      <input type="password" id="wizHubKey" placeholder="sk-..." autocomplete="off" />
-      <div class="panelrow"><button class="btn primary" id="wizHubSend">Send it to the Hub</button><button class="btn" id="wizHubSkip">Later</button></div>
-      <div class="status" id="wizHubStatus"></div>
-    </div>
-
     <div class="wizstep" data-step="6">
       <h3>You're all set</h3>
       <p id="wizDoneText">Your key works and is saved on this phone. Type English and you get natural Israeli Hebrew with the vowel marks double-checked by a specialist. Tap the Share button in Safari and choose <b>Add to Home Screen</b> to keep it like a real app.</p>
@@ -231,12 +223,6 @@
     <label>Spending</label>
     <div id="costDetail" style="font-size:14px;padding:6px 0;color:var(--text)">—</div>
     <button class="guidelink" id="costResetBtn">Reset the counter</button>
-    <label id="hubLabel">Aetna Hub key</label>
-    <div id="hubRow">
-      <input type="password" id="hubKeyInput" placeholder="Second key, named Aetna Hub (sk-...)" autocomplete="off" />
-      <button class="guidelink" id="hubSendBtn">Send it to the Hub</button>
-    </div>
-    <div class="status" id="hubStatus" style="padding:4px 0"></div>
     <label>Niqqud double-check</label>
     <select id="nakdanSelect">
       <option value="on">On, verify with Dicta Nakdan (recommended)</option>
@@ -369,40 +355,6 @@ function recordCost(model, usage){
   updateCostLine();
 }
 
-// ---- Aetna Hub key handoff --------------------------------------------------
-// The second key David creates is delivered straight to the company Hub over
-// HTTPS; this page never stores it. The drop token matches the Hub server's
-// HUB_KEY_DROP_TOKEN secret; rotate both together.
-const HUB_URL = 'https://aetna-ai-hub-g5znza74vxax4.centralus.cloudapp.azure.com';
-const HUB_DROP_TOKEN = '50e0cd91dde349b092a37c7af34c6a07664299026c46de98';
-function hubDelivered(){ return !!lsGet('hubKeyDelivered'); }
-
-async function openAiKeyWorks(k){
-  const r = await fetch('https://api.openai.com/v1/models/gpt-4o-mini', { headers: { authorization: 'Bearer ' + k } });
-  return r.status !== 401 && r.status !== 403;
-}
-
-// Returns null on success, or a friendly error message to show.
-async function deliverHubKey(k){
-  if (!k) return 'Paste the Aetna Hub key first. It starts with sk-.';
-  if (k.indexOf('sk-') !== 0) return 'That does not look like an OpenAI key — it should start with sk-. Copy it again.';
-  try {
-    if (!(await openAiKeyWorks(k))) return 'OpenAI did not accept that key. Create a fresh one named Aetna Hub and paste it again.';
-  } catch { return 'Could not reach OpenAI to check the key. Check your connection and try again.'; }
-  let res;
-  try {
-    res = await fetch(HUB_URL + '/api/translator/hub-key', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token: HUB_DROP_TOKEN, key: k })
-    });
-  } catch { return 'Could not reach the Hub. Check your connection and try again, or tap Later — Caleb will sort it out.'; }
-  const data = await res.json().catch(() => ({}));
-  if (res.ok && data.ok) { lsSet('hubKeyDelivered', new Date().toISOString()); return null; }
-  if (res.status === 503) return 'The Hub is not ready to receive the key just yet. Tap Later — your translator works either way, and Caleb will ping you.';
-  if (res.status === 401) return 'The Hub did not recognize this page. Tell Caleb — nothing was sent.';
-  return 'The Hub could not take the key right now. Try again in a minute, or tap Later and tell Caleb.';
-}
 function nakdanOn(){ return (lsGet('nakdanCheck') || 'on') !== 'off'; }
 const isTouch = 'ontouchstart' in window;
 
@@ -852,14 +804,7 @@ document.getElementById('histClearBtn').onclick = () => {
 
 // ---- Settings sheet --------------------------------------------------------
 const sheet = document.getElementById('sheet');
-function renderHubState(){
-  // Once the Hub key has been delivered, every trace of it disappears from the
-  // app — no banner, no mention, nothing to wonder about.
-  const done = hubDelivered();
-  document.getElementById('hubLabel').style.display = done ? 'none' : '';
-  document.getElementById('hubRow').style.display = done ? 'none' : '';
-  document.getElementById('hubStatus').style.display = done ? 'none' : '';
-  if (!done) document.getElementById('hubStatus').textContent = '';
+function renderSpending(){
   const t = costTotals();
   document.getElementById('costDetail').textContent =
     fmtUSD(t.month) + ' this month · ' + fmtUSD(t.total) + ' all time · ' + t.calls + ' calls, from OpenAI’s own token counts';
@@ -867,27 +812,15 @@ function renderHubState(){
 document.getElementById('costResetBtn').onclick = () => {
   lsSet('costTotal', '0'); lsSet('costMonth', '0'); lsSet('costCalls', '0');
   updateCostLine();
-  renderHubState();
+  renderSpending();
 };
 document.getElementById('gearBtn').onclick = () => {
   document.getElementById('keyInput').value = getKey();
   document.getElementById('modelSelect').value = getModel();
   document.getElementById('nakdanSelect').value = nakdanOn() ? 'on' : 'off';
   document.getElementById('sheetStatus').textContent = '';
-  renderHubState();
+  renderSpending();
   sheet.classList.add('open');
-};
-document.getElementById('hubSendBtn').onclick = async () => {
-  const s = document.getElementById('hubStatus');
-  s.className = 'status';
-  s.innerHTML = '<span class="spin"></span>Checking and delivering…';
-  const err = await deliverHubKey(document.getElementById('hubKeyInput').value.trim());
-  if (err){ s.className = 'status err'; s.textContent = err; return; }
-  document.getElementById('hubKeyInput').value = '';
-  renderHubState();
-  const sh = document.getElementById('sheetStatus');
-  sh.className = 'status ok';
-  sh.textContent = 'Great — we have sent the key to Caleb and the Hub. Thank you!';
 };
 document.getElementById('closeBtn').onclick = () => sheet.classList.remove('open');
 sheet.onclick = e => { if (e.target === sheet) sheet.classList.remove('open'); };
@@ -938,9 +871,8 @@ function wizShow(n){
   document.getElementById('wizNav').style.display = (n >= 1 && n <= 4) ? 'flex' : 'none';
   document.getElementById('wizNext').style.display = (n >= 1 && n <= 3) ? '' : 'none';
   // Remember the step: the key-page link can navigate this tab away, and the
-  // wizard must resume here (not restart) when the user comes back. Step 5
-  // (the Hub key) is remembered too — he leaves the page to create that key.
-  if (n >= 1 && n <= 5) lsSet('wizStep', String(n));
+  // wizard must resume here (not restart) when the user comes back.
+  if (n >= 1 && n <= 4) lsSet('wizStep', String(n));
 }
 function wizOpen(n){ wizard.classList.add('open'); wizShow(n); }
 function wizClose(){
@@ -966,33 +898,13 @@ document.getElementById('wizTest').onclick = async () => {
     lsDel('noSchema');
     statusEl.className = 'status';
     statusEl.textContent = 'Ready';
-    if (hubDelivered()) {
-      // The Hub key is long since handed over — no trace of it on later runs.
-      document.getElementById('wizDoneText').innerHTML = 'Your key works and is saved on this phone. Type English and you get natural Israeli Hebrew with the vowel marks double-checked by a specialist. Tap the Share button in Safari and choose <b>Add to Home Screen</b> to keep it like a real app.';
-    }
-    wizShow(hubDelivered() ? 6 : 5);
+    wizShow(6);
   } catch(e) {
     s.className = 'status err';
     let m = e.friendly ? e.message : 'That did not work. Check the key and try again.';
     if (/not accepted/.test(m)) m = 'That key was not accepted. Paste it again carefully, or go back a step and create a fresh one.';
     s.textContent = m;
   }
-};
-document.getElementById('wizHubSend').onclick = async () => {
-  const s = document.getElementById('wizHubStatus');
-  s.className = 'status';
-  s.innerHTML = '<span class="spin"></span>Checking and delivering…';
-  const err = await deliverHubKey(document.getElementById('wizHubKey').value.trim());
-  if (err){ s.className = 'status err'; s.textContent = err; return; }
-  document.getElementById('wizHubKey').value = '';
-  s.className = 'status ok';
-  s.textContent = 'Delivered.';
-  document.getElementById('wizDoneText').innerHTML = '<b>Great — we have sent the key to Caleb and the Hub. Thank you!</b><br><br>You are all set. Type English and you get natural Israeli Hebrew with the vowel marks double-checked by a specialist. Tap the Share button in Safari and choose <b>Add to Home Screen</b> to keep it like a real app.';
-  wizShow(6);
-};
-document.getElementById('wizHubSkip').onclick = () => {
-  document.getElementById('wizDoneText').innerHTML = 'Your key works and is saved on this phone. Whenever you are ready to send the Hub key, tap ⚙️ — the box is waiting there. Tap the Share button in Safari and choose <b>Add to Home Screen</b> to keep the translator like a real app.';
-  wizShow(6);
 };
 document.getElementById('guideBtn').onclick = () => {
   sheet.classList.remove('open');
@@ -1041,10 +953,9 @@ if (!getKey()){
   const resume = parseInt(lsGet('wizStep') || '', 10);
   if (resume >= 1) wizOpen(Math.min(resume, 4));
   else if (!lsGet('wizSeen')) wizOpen(0);
-} else if (!hubDelivered() && lsGet('wizStep') === '5'){
-  // He left mid-way through creating the Hub key — pick up right there.
-  wizOpen(5);
 }
+// A step that no longer exists (an older version of this page had five).
+if (lsGet('wizStep') === '5') lsDel('wizStep');
 relabel();
 renderHist();
 updateCostLine();
